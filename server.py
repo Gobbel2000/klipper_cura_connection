@@ -2,8 +2,6 @@
 
 from http import HTTPStatus
 import http.server as srv
-import sys
-from time import sleep
 
 
 class Handler(srv.BaseHTTPRequestHandler):
@@ -38,6 +36,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.do_POST()
+
 
 httpd = srv.HTTPServer(("192.168.178.50", 80), Handler)
 httpd.serve_forever()

@@ -7,17 +7,17 @@ import zeroconf as zc
 zeroconf = zc.Zeroconf()
 
 prop_dict = {
-    b'type': b'printer',
-    b'name': b'Super sayan printer',
-    b'machine': b'213482',
-    b'firmware_version': b'5.2.11', # This printer runs the most advanced of firmwares
+    b'type': b'printer', # Necessary to be noticed by Cura
+    b'name': b'Super sayan printer', # Might have to be unique, is displayed everywhere
+    b'machine': b'213482', # BOM-number, for now we disguise as an Ultimaker 3
+    b'firmware_version': b'5.2.11', # Currently required in some tests
     }
 
 info = zc.ServiceInfo(
     type_="_klipper._tcp.local.",
     name="Klipper Networked Printer._klipper._tcp.local.",
-    address=socket.inet_aton("192.168.178.50"),
-    port=80,
+    address=socket.inet_aton("192.168.178.50"), # TODO: automatically get IPv4-Address
+    port=80, # Default HTTP port, this is where Cura sends to
     properties=prop_dict,
     server="talos.local.",
     )
@@ -32,4 +32,3 @@ except KeyboardInterrupt:
 finally:
     zeroconf.unregister_service(info)
     zeroconf.close()
-
