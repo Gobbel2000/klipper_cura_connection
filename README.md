@@ -23,12 +23,10 @@ to printers added in Cura.
 ## TODO
 
 * HTTP server
-    * Receive files
-    * Decompress files
     * Handle other messages and requests
-    * Send data
-* Convince cura that it can send files that way
-    (Currently a restart of this zeroconf part is needed)
+    * Send data (presumably over status files)
+* Figure out which file type to send and if to compress.
+    Currently uncompressed GCode files are sent
 * Figure out if it is really necessary to disguise as an Ultimaker3
     Probably not, as custom sizes etc. will need to be set :/
 * Figure out a way to determine a unique printer name (hostname?)
@@ -43,10 +41,13 @@ to printers added in Cura.
 * They get checked for some values in the propertie dict
 * When the user adds that device, a new machine (Stack) is created
 * Further communication happens via the IP address on HTTP
+* Every ~2 seconds \_update() is called on all device objects.
+    This continuously requests printers and print_jobs status data
+* When clicking "Print over network" the file is sent in a multipart POST request.
 
 ## Setup
 
 python-libcharon needed to be installed for me so that the
 UFPWriter and UFPReader plugins of Cura can work. Otherwise
 an exception is generated when trying to send a file.
-
+This might not apply when files are sent as GCode instead?

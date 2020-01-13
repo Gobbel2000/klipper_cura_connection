@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import gzip
+import email.parser
+import email.policy
 from http import HTTPStatus
 import http.server as srv
 import os.path
@@ -36,17 +37,31 @@ class Handler(srv.BaseHTTPRequestHandler):
     def do_POST(self):
         print("Callee:", self.client_address)
         print(self.path)
-        print(self.command)
         print(self.headers)
-        length = int(self.headers.get("Content-Length", 0))
-        data = self.rfile.read(length)
-        gcode = gzip.decompress(data)
-        filepath = PATH + self.path + "file"
-        with open(filepath, "wb") as handle:
-            # Needs line splitting?
-            handle.write(gcode)
+        if self.headers.get_content_maintype() == "multipart":
+            self.do_post_multipart()
         self.send_response(HTTPStatus.OK)
         self.end_headers()
+
+    def do_post_multipart(self):
+        b_headers = self.headers.as_bytes()
+        length = int(self.headers.get("Content-Length", 0))
+        # Read the entire body of the request. This call will block
+        # if the transmission is slow.
+        b_parts = self.rfile.read(length)
+        b_form = b_headers + b_parts
+        # Specifying the HTTP policy makes the parser return an
+        # email.message.EmailMessage instead of *.Message object.
+        # This is not compatible with Python <= 3.2
+        parser = email.parser.BytesParser(policy=email.policy.HTTP)
+        multipart = parser.parsebytes(b_form)
+        assert(multipart.is_multipart())
+        for part in multipart.iter_parts():
+            disp = part.get("Content-Disposition").params
+            if disp["name"] == "file":
+                filename = PATH + self.path + disp["filename"]
+                with open(filename, "w") as handle:
+                    handle.write(part.get_content())
 
     def do_PUT(self):
         self.do_POST()
