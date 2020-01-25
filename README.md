@@ -25,14 +25,15 @@ to printers added in Cura.
 * HTTP server
     * Handle other messages and requests
     * Send data (presumably over status files)
-* Figure out which file type to send and if to compress.
-    Currently uncompressed GCode files are sent
-* Figure out if it is really necessary to disguise as an Ultimaker3
+* Figure out which file type to send and if to compress.  
+    Currently uncompressed GCode files are sent  
+    Possibly use ufp.
+* Figure out if it is really necessary to disguise as an Ultimaker3  
     Probably not, as custom sizes etc. will need to be set :/
 * Figure out a way to determine a unique printer name (hostname?)
-* Receive IPv4 Address from network manager
+* Receive IPv4 Address from network manager  
     (dbus implemented function exists: kgui/nm\_dbus.py)
-* The server needs to be run as root to be able to listen to
+* The server needs to be run as root to be able to listen to  
     port 80. Workaround needed.
 
 ## What's happening in Cura?
@@ -41,7 +42,7 @@ to printers added in Cura.
 * They get checked for some values in the propertie dict
 * When the user adds that device, a new machine (Stack) is created
 * Further communication happens via the IP address on HTTP
-* Every ~2 seconds \_update() is called on all device objects.
+* Every 2 seconds \_update() is called on all device objects.
     This continuously requests printers and print_jobs status data
 * When clicking "Print over network" the file is sent in a multipart POST request.
 
@@ -51,3 +52,18 @@ python-libcharon needed to be installed for me so that the
 UFPWriter and UFPReader plugins of Cura can work. Otherwise
 an exception is generated when trying to send a file.
 This might not apply when files are sent as GCode instead?
+
+## Info on possible requests
+
+All come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
+
+|Name                   |Type   |URL (/cluster-api/v1 + .)      |Data                           |Notes
+|-----------------------|-------|-------------------------------|-------------------------------|-----------------------
+|getSystem              |GET    |!/api/v1/system                |                               |For manual connection
+|getPrinters            |GET    |/printers                      |                               |Periodically requested
+|getPrintJobs           |GET    |/print\_jobs                   |                               |Periodically requested
+|setPrintJobState       |PUT    |/print\_jobs/UUID/action       |("pause", "print", "abort")    |
+|movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |json{"to\_position": 0,...}    |
+|forcePrintJob          |PUT    |/print\_jobs/UUID              |json{"force": True}            |
+|deletePrintJob         |DELETE |/print\_jobs/UUID              |                               |
+|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|                              |

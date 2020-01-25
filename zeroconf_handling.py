@@ -19,7 +19,6 @@ info = zc.ServiceInfo(
     addresses=[socket.inet_aton("192.168.178.50")], # TODO: automatically get IPv4-Address
     port=80, # Default HTTP port, this is where Cura sends to
     properties=prop_dict,
-    server="talos.local.",
     )
 
 zeroconf.register_service(info)
