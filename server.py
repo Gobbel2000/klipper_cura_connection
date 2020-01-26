@@ -7,9 +7,26 @@ import http.server as srv
 import os.path
 
 PATH = "http/"
+PRINTER_API = "/api/v1/"
+CLUSTER_API = "/cluster_api/v1/"
 
+class ContentManager:
+
+    def get_system(self):
+        return "[]"
+    def get_print_jobs(self):
+        return "[]"
+
+    def get_printers(self):
+        pass
+
+manager = ContentManager()
 
 class Handler(srv.BaseHTTPRequestHandler):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.content_manager = manager
 
     def do_HEAD(self):
         print("Callee:", self.client_address)
@@ -18,15 +35,18 @@ class Handler(srv.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        print("wants this file:", self.path)
-        filepath = PATH + self.path
-        if os.path.isdir(filepath):
-            filepath += "/index"
-        try:
-            with open(filepath, "rb") as handle:
-                content = handle.read()
-        except OSError as e:
-            print(e)
+        """
+        Implement a case-specific response, limited to the requests
+        that we can expect from Cura.  For a summary of those see
+        README.md
+        """
+        if self.path == PRINTER_API + "system":
+            content = self.content_manager.get_system()
+        elif self.path == CLUSTER_API + "printers":
+            content = self.content_manager.get_printers()
+        elif self.path == CLUSTER_API + "print_jobs":
+            content = self.content_manager.get_print_jobs()
+        else:
             self.send_response(HTTPStatus.NOT_FOUND)
             self.end_headers()
             return
@@ -71,6 +91,13 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.do_POST()
+
+    #def log_message(self, format, *args):
+    #    """Overwriting for specific logging"""
+    #    message = ("%s - - [%s] %s\n" %
+    #                     (self.address_string(),
+    #                      self.log_date_time_string(),
+    #                      format%args))
 
 
 httpd = srv.HTTPServer(("192.168.178.50", 80), Handler)
