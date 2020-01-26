@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
-import email.parser
-import email.policy
-from http import HTTPStatus
-import http.server as srv
+import email
+#PYTHON3: from http import HTTPStatus
+#PYTHON3: import http.server as srv
+import httplib as HTTPStatus
+import BaseHTTPServer as srv
 import os.path
 
 PATH = "http/"
@@ -18,7 +19,7 @@ class ContentManager:
         return "[]"
 
     def get_printers(self):
-        pass
+        return "{}"
 
 manager = ContentManager()
 
@@ -64,22 +65,21 @@ class Handler(srv.BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_post_multipart(self):
-        b_headers = self.headers.as_bytes()
+        headers = self.headers.as_string()
         length = int(self.headers.get("Content-Length", 0))
         # Read the entire body of the request. This call will block
         # if the transmission is slow.
-        b_parts = self.rfile.read(length)
-        b_form = b_headers + b_parts
+        parts = self.rfile.read(length)
+        form = headers + parts
         # Specifying the HTTP policy makes the parser return an
         # email.message.EmailMessage instead of *.Message object.
         # This is not compatible with Python <= 3.2
-        parser = email.parser.BytesParser(policy=email.policy.HTTP)
-        multipart = parser.parsebytes(b_form)
+        multipart = email.message_from_string(form)
         assert(multipart.is_multipart())
-        for part in multipart.iter_parts():
+        for part in multipart.get_payload():
             disp = part.get("Content-Disposition").params
-            if disp["name"] == "file":
-                filename = PATH + self.path + disp["filename"]
+            if part.get_param("name", header="Content-Disposition"):
+                filename = PATH + self.path + part.get_filename()
                 with open(filename, "w") as handle:
                     handle.write(part.get_content())
 

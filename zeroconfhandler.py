@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import socket
 import zeroconf as zc
@@ -22,7 +22,7 @@ class ZeroConfHandler:
         self.info = zc.ServiceInfo(
             type_="_klipper._tcp.local.",
             name="Klipper Networked Printer._klipper._tcp.local.",
-            addresses=[socket.inet_aton("192.168.178.50")], # TODO: automatically get IPv4-Address
+            address=socket.inet_aton("192.168.178.50"), # TODO: automatically get IPv4-Address
             port=80, # Default HTTP port, this is where Cura sends to
             properties=self.prop_dict,
             )
