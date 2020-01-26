@@ -99,6 +99,8 @@ class Handler(srv.BaseHTTPRequestHandler):
     #                      self.log_date_time_string(),
     #                      format%args))
 
+def get_server():
+    return srv.HTTPServer(("192.168.178.50", 80), Handler)
 
-httpd = srv.HTTPServer(("192.168.178.50", 80), Handler)
-httpd.serve_forever()
+if __name__ == "__main__":
+    get_server().serve_forever()
