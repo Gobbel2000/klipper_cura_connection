@@ -34,6 +34,19 @@ class BaseModel:
     def toDict(self) -> Dict[str, Any]:
         return self.__dict__
 
+    ## Convert model and recursively all submodels into a dictionary
+    def serialize(self) -> Dict[str, Any]:
+        dictionary = self.toDict()
+        for k, v in dictionary.items():
+            # Serialize recursively if we encounter another Model
+            if isinstance(v, BaseModel): # Gets all Models
+                dictionary[k] = v.serialize()
+        return dictionary
+
+    ## Serialize into a json string
+    def get_json(self) -> str:
+        return json.dumps(self.serialize())
+
     ## Parses a single model.
     #  \param model_class: The model class.
     #  \param values: The value of the model, which is usually a dictionary, but may also be already parsed.

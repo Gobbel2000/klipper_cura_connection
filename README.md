@@ -25,16 +25,18 @@ to printers added in Cura.
 * HTTP server
     * Handle other messages and requests
     * Send data (presumably over status files)
+* Implement models and aquire information
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
     Possibly use ufp.
 * Figure out if it is really necessary to disguise as an Ultimaker3  
-    Probably not, as custom sizes etc. will need to be set :/
+    Otherwise custom sizes will need to be set differently.
 * Figure out a way to determine a unique printer name (hostname?)
 * Receive IPv4 Address from network manager  
     (dbus implemented function exists: kgui/nm\_dbus.py)
 * The server needs to be run as root to be able to listen to  
     port 80. Workaround needed.
+* Implement testing mode to test the module without klipper
 
 ## What's happening in Cura?
 

@@ -71,9 +71,6 @@ class Handler(srv.BaseHTTPRequestHandler):
         # if the transmission is slow.
         parts = self.rfile.read(length)
         form = headers + parts
-        # Specifying the HTTP policy makes the parser return an
-        # email.message.EmailMessage instead of *.Message object.
-        # This is not compatible with Python <= 3.2
         multipart = email.message_from_string(form)
         assert(multipart.is_multipart())
         for part in multipart.get_payload():
@@ -81,7 +78,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             if part.get_param("name", header="Content-Disposition"):
                 filename = PATH + self.path + part.get_filename()
                 with open(filename, "w") as handle:
-                    handle.write(part.get_content())
+                    handle.write(part.get_payload())
 
     def do_PUT(self):
         self.do_POST()
