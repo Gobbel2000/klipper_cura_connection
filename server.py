@@ -11,18 +11,6 @@ PATH = "http/"
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster_api/v1/"
 
-class ContentManager:
-
-    def get_system(self):
-        return "[]"
-    def get_print_jobs(self):
-        return "[]"
-
-    def get_printers(self):
-        return "{}"
-
-manager = ContentManager()
-
 class Handler(srv.BaseHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
@@ -44,7 +32,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         if self.path == PRINTER_API + "system":
             content = self.content_manager.get_system()
         elif self.path == CLUSTER_API + "printers":
-            content = self.content_manager.get_printers()
+            content = self.content_manager.get_printer_status()
         elif self.path == CLUSTER_API + "print_jobs":
             content = self.content_manager.get_print_jobs()
         else:
@@ -53,7 +41,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             return
         self.send_response(HTTPStatus.OK)
         self.end_headers()
-        self.wfile.write(content)
+        json.dump(content, self.wfile)
 
     def do_POST(self):
         print("Callee:", self.client_address)

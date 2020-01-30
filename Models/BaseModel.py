@@ -1,6 +1,8 @@
 # Copyright (c) 2019 Ultimaker B.V.
 # Cura is released under the terms of the LGPLv3 or higher.
+from copy import deepcopy
 from datetime import datetime, timezone
+import json
 from typing import TypeVar, Dict, List, Any, Type, Union
 
 
@@ -36,11 +38,17 @@ class BaseModel:
 
     ## Convert model and recursively all submodels into a dictionary
     def serialize(self) -> Dict[str, Any]:
-        dictionary = self.toDict()
+        # deepcopy to not mutate the object
+        dictionary = deepcopy(self.toDict())
         for k, v in dictionary.items():
             # Serialize recursively if we encounter another Model
             if isinstance(v, BaseModel): # Gets all Models
                 dictionary[k] = v.serialize()
+            # It could also be a list of models
+            elif isinstance(v, list):
+                for i, m in enumerate(v):
+                    if isinstance(m, BaseModel):
+                        v[i] = m.serialize()
         return dictionary
 
     ## Serialize into a json string

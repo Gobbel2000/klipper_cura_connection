@@ -11,6 +11,7 @@ from threading import Thread
 from zeroconfhandler import ZeroConfHandler
 import server
 
+version = "5.2.11" # We need to disguise as Cura Connect for now
 
 class CuraConnectionModule:
 
@@ -33,7 +34,7 @@ class CuraConnectionModule:
 
     def start(self):
         """Start the zeroconf service and the server in a seperate thread"""
-        self.zeroconf_handler.start()
+        self.zeroconf_handler.start() # Non-blocking
         self.server_thread = Thread(
             target=self.server.serve_forever,
             name="Cura_Connection_Server")
@@ -44,6 +45,7 @@ class CuraConnectionModule:
         """This might take a little while, be patient"""
         self.zeroconf_handler.stop()
         self.server.shutdown()
+        self.server_thread.join()
 
 
 def load_config(config):
