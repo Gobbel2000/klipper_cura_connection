@@ -2,7 +2,6 @@
 # Cura is released under the terms of the LGPLv3 or higher.
 from copy import deepcopy
 from datetime import datetime, timezone
-import json
 from typing import TypeVar, Dict, List, Any, Type, Union
 
 
@@ -49,11 +48,11 @@ class BaseModel:
                 for i, m in enumerate(v):
                     if isinstance(m, BaseModel):
                         v[i] = m.serialize()
+            # Some models store datetime objects
+            elif isinstance(v, datetime):
+                # Replace with date string as parsed by self.parseDate()
+                dictionary[k] = v.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         return dictionary
-
-    ## Serialize into a json string
-    def get_json(self) -> str:
-        return json.dumps(self.serialize())
 
     ## Parses a single model.
     #  \param model_class: The model class.
