@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 #import curaconnection
@@ -48,7 +48,7 @@ class ContentManager:
     @staticmethod
     def get_time_str():
         """Returns the current UTC time in a string in ISO8601 format"""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.utcnow()
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     def get_printer_status(self):
