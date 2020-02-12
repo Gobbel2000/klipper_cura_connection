@@ -40,12 +40,14 @@ class ContentManager:
 
     @staticmethod
     def new_uuid():
-        """Returns a newly generated UUID"""
+        """Returns a newly generated UUID as a str"""
+        # uuid1() returns a uuid based on time and IP address
+        # uuid4() would generate a completely random uuid
         return str(uuid.uuid1())
 
     @staticmethod
     def get_time_str():
-        """Returns the current time in a string as parsed by BaseModel.parseDate()"""
+        """Returns the current UTC time in a string in ISO8601 format"""
         now = datetime.now(tz=timezone.utc)
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
