@@ -17,4 +17,4 @@ class ClusterPrintCoreConfiguration(BaseModel):
         self.extruder_index = extruder_index
         self.material = self.parseModel(ClusterPrinterConfigurationMaterial, material) if material else None
         self.print_core_id = print_core_id
-        super().__init__(**kwargs)
+        super(ClusterPrintCoreConfiguration, self).__init__(**kwargs)

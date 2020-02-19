@@ -22,4 +22,4 @@ class CloudError(BaseModel):
         self.title = title
         self.detail = detail
         self.meta = meta
-        super().__init__(**kwargs)
+        super(CloudError, self).__init__(**kwargs)

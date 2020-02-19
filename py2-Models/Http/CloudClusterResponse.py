@@ -28,10 +28,10 @@ class CloudClusterResponse(BaseModel):
         self.host_internal_ip = host_internal_ip
         self.friendly_name = friendly_name
         self.printer_type = printer_type
-        super().__init__(**kwargs)
+        super(CloudClusterResponse, self).__init__(**kwargs)
 
     # Validates the model, raising an exception if the model is invalid.
     def validate(self):
-        super().validate()
+        super(CloudClusterResponse, self).validate()
         if not self.cluster_id:
             raise ValueError("cluster_id is required on CloudCluster")

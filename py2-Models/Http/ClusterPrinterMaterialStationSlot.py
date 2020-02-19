@@ -17,4 +17,4 @@ class ClusterPrinterMaterialStationSlot(ClusterPrintCoreConfiguration):
         self.compatible = compatible
         self.material_remaining = material_remaining
         self.material_empty = material_empty
-        super().__init__(**kwargs)
+        super(ClusterPrinterMaterialStationSlot, self).__init__(**kwargs)

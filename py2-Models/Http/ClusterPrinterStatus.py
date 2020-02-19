@@ -49,4 +49,4 @@ class ClusterPrinterStatus(BaseModel):
         self.build_plate = self.parseModel(ClusterBuildPlate, build_plate) if build_plate else None
         self.material_station = self.parseModel(ClusterPrinterMaterialStation,
                                                 material_station) if material_station else None
-        super().__init__(**kwargs)
+        super(ClusterPrinterStatus, self).__init__(**kwargs)

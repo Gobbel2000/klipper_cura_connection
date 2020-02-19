@@ -13,4 +13,4 @@ class ClusterPrintJobImpediment(BaseModel):
     def __init__(self, translation_key, severity, **kwargs):
         self.translation_key = translation_key
         self.severity = severity
-        super().__init__(**kwargs)
+        super(ClusterPrintJobImpediment, self).__init__(**kwargs)

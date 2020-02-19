@@ -17,4 +17,4 @@ class ClusterPrinterConfigurationMaterial(BaseModel):
         self.brand = brand
         self.color = color
         self.material = material
-        super().__init__(**kwargs)
+        super(ClusterPrinterConfigurationMaterial, self).__init__(**kwargs)

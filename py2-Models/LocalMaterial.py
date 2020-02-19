@@ -9,10 +9,10 @@ class LocalMaterial(BaseModel):
         self.GUID = GUID  # type: str
         self.id = id  # type: str
         self.version = version  # type: int
-        super().__init__(**kwargs)
+        super(LocalMaterial, self).__init__(**kwargs)
 
     def validate(self):
-        super().validate()
+        super(LocalMaterial, self).validate()
         if not self.GUID:
             raise ValueError("guid is required on LocalMaterial")
         if not self.version:

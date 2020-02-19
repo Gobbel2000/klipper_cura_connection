@@ -10,4 +10,4 @@ class ClusterBuildPlate(BaseModel):
     #  \param type: The type of build plate glass or aluminium
     def __init__(self, type = "glass", **kwargs):
         self.type = type
-        super().__init__(**kwargs)
+        super(ClusterBuildPlate, self).__init__(**kwargs)

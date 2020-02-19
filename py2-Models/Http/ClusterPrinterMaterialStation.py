@@ -16,4 +16,4 @@ class ClusterPrinterMaterialStation(BaseModel):
         self.supported = supported
         self.material_slots = self.parseModels(ClusterPrinterMaterialStationSlot, material_slots)\
             if material_slots else []  # type: List[ClusterPrinterMaterialStationSlot]
-        super().__init__(**kwargs)
+        super(ClusterPrinterMaterialStation, self).__init__(**kwargs)

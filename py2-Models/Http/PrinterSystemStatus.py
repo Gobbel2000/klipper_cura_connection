@@ -16,4 +16,4 @@ class PrinterSystemStatus(BaseModel):
         self.platform = platform
         self.variant = variant
         self.hardware = hardware
-        super().__init__(**kwargs)
+        super(PrinterSystemStatus, self).__init__(**kwargs)

@@ -19,4 +19,4 @@ class CloudPrintResponse(BaseModel):
         self.status = status
         self.cluster_job_id = cluster_job_id
         self.generated_time = self.parseDate(generated_time)
-        super().__init__(**kwargs)
+        super(CloudPrintResponse, self).__init__(**kwargs)

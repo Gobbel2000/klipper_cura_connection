@@ -7,7 +7,7 @@ class ClusterMaterial(BaseModel):
     def __init__(self, guid, version, **kwargs):
         self.guid = guid  # type: str
         self.version = version  # type: int
-        super().__init__(**kwargs)
+        super(ClusterMaterial, self).__init__(**kwargs)
 
     def validate(self):
         if not self.guid:

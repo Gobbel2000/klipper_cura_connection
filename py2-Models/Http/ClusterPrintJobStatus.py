@@ -69,4 +69,4 @@ class ClusterPrintJobStatus(BaseModel):
         self.impediments_to_printing = self.parseModels(ClusterPrintJobImpediment, impediments_to_printing) \
             if impediments_to_printing else []
 
-        super().__init__(**kwargs)
+        super(ClusterPrintJobStatus, self).__init__(**kwargs)

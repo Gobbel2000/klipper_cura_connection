@@ -27,4 +27,4 @@ class CloudPrintJobResponse(BaseModel):
         self.content_type = content_type
         self.status_description = status_description
         self.slicing_details = slicing_details
-        super().__init__(**kwargs)
+        super(CloudPrintJobResponse, self).__init__(**kwargs)

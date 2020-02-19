@@ -14,4 +14,4 @@ class CloudPrintJobUploadRequest(BaseModel):
         self.job_name = job_name
         self.file_size = file_size
         self.content_type = content_type
-        super().__init__(**kwargs)
+        super(CloudPrintJobUploadRequest, self).__init__(**kwargs)

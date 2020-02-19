@@ -11,4 +11,4 @@ class ClusterPrintJobConstraints(BaseModel):
     #       Should be one of the unique_name field values in the cluster, e.g. 'ultimakersystem-ccbdd30044ec'
     def __init__(self, require_printer_name = None, **kwargs):
         self.require_printer_name = require_printer_name
-        super().__init__(**kwargs)
+        super(ClusterPrintJobConstraints, self).__init__(**kwargs)

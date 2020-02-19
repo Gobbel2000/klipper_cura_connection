@@ -1,10 +1,27 @@
 # Copyright (c) 2019 Ultimaker B.V.
 # Cura is released under the terms of the LGPLv3 or higher.
 from copy import deepcopy
-from datetime import datetime, timezone
+#from datetime import datetime, timezone
+from datetime import tzinfo, timedelta, datetime
 
 
-class BaseModel:
+class UTC(tzinfo):
+    """Because py2 datetime can't do this by itself"""
+    ZERO = timedelta(0)
+
+    def utcoffset(self, dt):
+        return self.ZERO
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return self.ZERO
+
+utc = UTC()
+
+
+class BaseModel(object):
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -74,4 +91,4 @@ class BaseModel:
     def parseDate(date):
         if isinstance(date, datetime):
             return date
-        return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+        return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=utc)

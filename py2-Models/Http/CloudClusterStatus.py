@@ -18,4 +18,4 @@ class CloudClusterStatus(BaseModel):
         self.generated_time = self.parseDate(generated_time)
         self.printers = self.parseModels(ClusterPrinterStatus, printers)
         self.print_jobs = self.parseModels(ClusterPrintJobStatus, print_jobs)
-        super().__init__(**kwargs)
+        super(CloudClusterStatus, self).__init__(**kwargs)

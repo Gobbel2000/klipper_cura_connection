@@ -21,4 +21,4 @@ class ClusterPrintJobConfigurationChange(BaseModel):
         self.origin_id = origin_id
         self.target_name = target_name
         self.origin_name = origin_name
-        super().__init__(**kwargs)
+        super(ClusterPrintJobConfigurationChange, self).__init__(**kwargs)
