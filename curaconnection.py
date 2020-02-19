@@ -6,6 +6,7 @@ does,  which is doing most of the work  outside of initializing and
 shutting down,  which is handled in the CuraConnectionModule class.
 """
 
+import logging
 from threading import Thread
 
 from zeroconfhandler import ZeroConfHandler
@@ -21,6 +22,8 @@ class CuraConnectionModule:
         self.zeroconf_handler = ZeroConfHandler()
         self.server = server.get_server()
 
+        if config is None:
+            return
         self.config = config
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
@@ -48,7 +51,7 @@ class CuraConnectionModule:
         self.server_thread.join()
 
 
-def load_config(config):
+def load_config(config=None):
     """Entry point, called by Klippy"""
     module = CuraConnectionModule(config)
     module.start()

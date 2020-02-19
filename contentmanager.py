@@ -52,7 +52,7 @@ class ContentManager:
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     def get_printer_status(self):
-        return self.printer_status.serialize()
+        return [self.printer_status.serialize()]
 
     def get_print_jobs(self):
-        return [m.serialize() for m in self.print_jobs]
+        return [m.serialize() for m in self.print_jobs_by_uuid.values()]

@@ -5,19 +5,18 @@ import email
 #PYTHON3: import http.server as srv
 import httplib as HTTPStatus
 import BaseHTTPServer as srv
+import json
 import os.path
 
 from contentmanager import ContentManager
 
 PATH = "http/"
 PRINTER_API = "/api/v1/"
-CLUSTER_API = "/cluster_api/v1/"
+CLUSTER_API = "/cluster-api/v1/"
 
 class Handler(srv.BaseHTTPRequestHandler):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.content_manager = ContentManager()
+    content_manager = ContentManager()
 
     def do_HEAD(self):
         print("Callee:", self.client_address)

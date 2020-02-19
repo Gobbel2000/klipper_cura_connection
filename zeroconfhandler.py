@@ -4,7 +4,7 @@ import socket
 import zeroconf as zc
 
 
-class ZeroConfHandler:
+class ZeroConfHandler(object):
 
     def __init__(self):
         self.zeroconf = zc.Zeroconf()
