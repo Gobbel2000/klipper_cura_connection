@@ -25,6 +25,7 @@ to printers added in Cura.
 * HTTP server
     * Handle other messages and requests
     * Send data (presumably over status files)
+    * Have the server (specifically header messages) work with Python 2
 * Implement models and aquire information
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
