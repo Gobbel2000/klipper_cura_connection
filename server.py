@@ -47,9 +47,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         json.dump(content, self.wfile)
 
     def do_POST(self):
-        print("Callee:", self.client_address)
         print(self.path)
-        print(self.headers)
         self.send_response(HTTPStatus.OK)
         self.end_headers()
         if self.headers.getmaintype() == "multipart":
@@ -73,7 +71,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 
 class MimeParser(object):
     """
-    Parser for MIME messages which directly writes embedded files.
+    Parser for MIME messages which directly writes attached files.
 
     When calling parse() this class will parse all parts of a multipart
     MIME message, converting the parts to email.Message objects.
@@ -97,7 +95,9 @@ class MimeParser(object):
         self.boundary = boundary
         self.submessages = []
 
-        self._state = None # What we are reading right now
+        # What we are reading right now. One of:
+        # self.HEADERS, self.BODY, self.FILE (0, 1, 2)
+        self._state = None
         self._current_headers = ""
         self._current_body = ""
         self.fpath = "" # Path to the file to write to
@@ -121,11 +121,13 @@ class MimeParser(object):
         Parse a single line by first checking for self._state changes.
         Raising StopIteration breaks the loop in self.parse().
         """
+        # Previous message is finished
         if line.strip() == "--" + self.boundary:
             if self._current_body:
                 self.submessages[-1].set_payload(self._current_body.rstrip("\r\n"))
                 self._current_body = ""
             self._state = self.HEADERS # Read headers next
+        # This is the last line of the MIME message
         elif line.strip() == "--" + self.boundary + "--":
             raise StopIteration()
         # Parse dependent on _state
@@ -134,12 +136,13 @@ class MimeParser(object):
         elif self._state == self.BODY:
             self._parse_body(line)
 
-        # FILE state is set after parsing headers and should be directly handled
+        # FILE state is set after parsing headers and should be
+        # handled before reading the next line.
         if self._state == self.FILE:
             self._write_file()
 
     def _parse_headers(self, line):
-        """Parse a new line for the headers"""
+        """Add the new line to the headers or parse the full header"""
         if line == "\r\n": # End of headers
             headers_message = email.message_from_string(self._current_headers)
             self._current_headers = ""
@@ -152,7 +155,15 @@ class MimeParser(object):
         self._current_body += line
 
     def _write_file(self):
-        """Write the file following in fp directly to the disk"""
+        """
+        Write the file following in fp directly to the disk.
+        This does not happen line by line because with a lot of very
+        short lines that is quite inefficient. Instead the file is copied
+        in blocks with a size of 1024 bytes.
+        Then parse the remaining lines that have been read into the
+        buffer but do not belong to the file (everything past the first
+        occurance of boundary).
+        """
         buflen = 1024
         # Use two buffers in case the boundary gets cut in half
         buf1 = self.fp.read(buflen)
