@@ -22,11 +22,9 @@ to printers added in Cura.
 
 ## TODO
 
-* HTTP server
-    * Handle other messages and requests
-    * Send data (presumably over status files)
-    * Have the server (specifically header messages) work with Python 2
-* Implement models and aquire information
+* Handle all possible requests in HTTP Server
+* Aquire information
+    * Materials
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
     Possibly use ufp.
@@ -35,9 +33,8 @@ to printers added in Cura.
 * Figure out a way to determine a unique printer name (hostname?)
 * Receive IPv4 Address from network manager  
     (dbus implemented function exists: kgui/nm\_dbus.py)
-* The server needs to be run as root to be able to listen to  
-    port 80. Workaround needed.
 * Implement testing mode to test the module without klipper
+* Video stream?
 
 ## What's happening in Cura?
 
@@ -51,10 +48,19 @@ to printers added in Cura.
 
 ## Setup
 
-python-libcharon needed to be installed for me so that the
+`python-libcharon` needed to be installed for me so that the
 UFPWriter and UFPReader plugins of Cura can work. Otherwise
 an exception is generated when trying to send a file.
-This might not apply when files are sent as GCode instead?
+
+### Port redirection
+
+Root privileges are required to listen to port 80, the default HTTP port.
+Because of that we redirect packets to 8080 and listen to that instead:
+
+```bash
+sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8080
+sudo iptables-save -f /etc/iptables/iptables.rules
+```
 
 ## Info on possible requests
 

@@ -47,12 +47,12 @@ class Handler(srv.BaseHTTPRequestHandler):
         json.dump(content, self.wfile)
 
     def do_POST(self):
-        print(self.path)
         self.send_response(HTTPStatus.OK)
         self.end_headers()
         if self.headers.getmaintype() == "multipart":
             boundary = self.headers.getparam("boundary")
-            parser = MimeParser(self.rfile, boundary)
+            length = int(self.headers.get("Content-Length", 0))
+            parser = MimeParser(self.rfile, boundary, length)
             submessages = parser.parse()
 
     def do_PUT(self):
@@ -90,9 +90,10 @@ class MimeParser(object):
     BODY = 1
     FILE = 2
 
-    def __init__(self, fp, boundary):
+    def __init__(self, fp, boundary, length):
         self.fp = fp
         self.boundary = boundary
+        self.bytes_left = length
         self.submessages = []
 
         # What we are reading right now. One of:
@@ -110,6 +111,8 @@ class MimeParser(object):
         """
         while True:
             line = self.fp.readline()
+            #TODO Be aware of unicode. This might need change for Python 3.
+            self.bytes_left -= len(line)
             try:
                 self._parse_line(line)
             except StopIteration:
@@ -165,15 +168,29 @@ class MimeParser(object):
         occurance of boundary).
         """
         buflen = 1024
+
         # Use two buffers in case the boundary gets cut in half
+        # Make sure to not attempt to read past the content length
+        buflen = min(self.bytes_left, buflen)
         buf1 = self.fp.read(buflen)
+        self.bytes_left -= buflen
+
+        buflen = min(self.bytes_left, buflen)
         buf2 = self.fp.read(buflen)
+        self.bytes_left -= buflen
         with open(self.fpath, "w") as write_fp:
             while self.boundary not in buf1 + buf2:
                 write_fp.write(buf1)
                 buf1 = buf2
+                buflen = min(self.bytes_left, buflen)
                 buf2 = self.fp.read(buflen)
-            remaining_lines = (buf1 + buf2 + self.fp.readline()).splitlines(True)
+                self.bytes_left -= buflen
+            if self.bytes_left != 0:
+                # Catch the rest of the last line
+                remaining_lines = (buf1 + buf2 + self.fp.readline()).splitlines(True)
+            else:
+                remaining_lines = (buf1 + buf2).splitlines(True)
+
             # We need an exception for the last line of the file to strip
             # the trailing "\r\n" (<CR><LF>)
             prev_line = ""
@@ -206,7 +223,7 @@ class MimeParser(object):
         """
         Adjust a filename so that it doesn't overwrite an existing file.
         For example, if /path/to/file.txt exists, this function will
-        return '/path/to/file(1).txt', then '/path/to/file(2).txt'
+        return '/path/to/file-1.txt', then '/path/to/file-2.txt'
         and so on.
         """
         if not os.path.exists(path):
@@ -221,7 +238,7 @@ class MimeParser(object):
 
 
 def get_server():
-    return srv.HTTPServer(("192.168.178.50", 80), Handler)
+    return srv.HTTPServer(("192.168.178.50", 8080), Handler)
 
 if __name__ == "__main__":
     get_server().serve_forever()
