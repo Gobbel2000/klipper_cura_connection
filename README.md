@@ -55,11 +55,16 @@ an exception is generated when trying to send a file.
 ### Port redirection
 
 Root privileges are required to listen to port 80, the default HTTP port.
-Because of that we redirect packets to 8080 and listen to that instead:
+Because of that we redirect packets to 8080 and listen to that instead.
+We then make these persistent with installing iptables-persistent.
+With the configurations set first the installation is automatic and the
+rules we just set are written to /etc/iptables/rule.v4.
 
 ```bash
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8080
-sudo iptables-save -f /etc/iptables/iptables.rules
+echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
+sudo apt -y install iptables-persistent
 ```
 
 ## Info on possible requests
