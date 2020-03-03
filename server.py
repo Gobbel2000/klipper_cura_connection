@@ -84,6 +84,7 @@ class MimeParser(object):
     Arguments:
     fp          The file pointer to parse from
     boundary    The MIME boundary, as specified in the main headers
+    length      Length of the body, as specified in the main headers
     """
 
     HEADERS = 0

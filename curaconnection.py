@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 """
 Handles the discovery and the server for the  connection with Cura.
 
@@ -14,7 +15,7 @@ import server
 
 version = "5.2.11" # We need to disguise as Cura Connect for now
 
-class CuraConnectionModule:
+class CuraConnectionModule(object):
 
     def __init__(self, config):
         logging.info("Cura Connection Module initializing...")
@@ -51,8 +52,19 @@ class CuraConnectionModule:
         self.server_thread.join()
 
 
-def load_config(config=None):
+def load_config(config):
     """Entry point, called by Klippy"""
     module = CuraConnectionModule(config)
     module.start()
     return module
+
+if __name__ == "__main__":
+    import time
+    module = CuraConnectionModule(None)
+    module.start()
+    while True:
+        try:
+            time.sleep(0.1)
+        except KeyboardInterrupt:
+            module.stop()
+            break
