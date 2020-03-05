@@ -1,12 +1,12 @@
 from datetime import datetime
 import uuid
 
-#import curaconnection
+from Models.Http.ClusterMaterial import ClusterMaterial
 from Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
 from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
 
-class ContentManager:
+class ContentManager(object):
 
     def __init__(self):
         self.printer_status = ClusterPrinterStatus(
@@ -20,8 +20,9 @@ class ContentManager:
             uuid=self.new_uuid(),
             configuration=[{"extruder_index": 0}],
             )
-        self.print_jobs_by_uuid = {} # {UUID (str): ClusterPrinJobStatus}
-    
+        self.print_jobs_by_uuid = {} # type: {UUID (str): ClusterPrinJobStatus}
+        self.materials = [] # type: [ClusterMaterial]
+
     def add_print_job(self, filename, time_total=0, force=False):
         uuid = self.new_uuid()
         new_print_job = ClusterPrintJobStatus(
@@ -37,6 +38,13 @@ class ContentManager:
             constraints=[],
             )
         self.print_jobs_by_uuid[uuid] = new_print_job
+
+    def add_material(self, uuid, version):
+        new_material = ClusterMaterial(
+            guid=uuid,
+            version=version,
+            )
+        self.materials.append(new_materials)
 
     @staticmethod
     def new_uuid():
@@ -56,3 +64,6 @@ class ContentManager:
 
     def get_print_jobs(self):
         return [m.serialize() for m in self.print_jobs_by_uuid.values()]
+
+    def get_materials(self):
+        return [m.serialize() for m in self.materials]

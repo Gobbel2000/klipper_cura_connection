@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import email
-import email.parser
 #PYTHON3: from http import HTTPStatus
 #PYTHON3: import http.server as srv
 import httplib as HTTPStatus
@@ -11,20 +10,13 @@ import os.path
 
 from contentmanager import ContentManager
 
-PATH = "http/"
-RECEIVE_DIR = "received"
+RECEIVE_DIR = os.path.expanduser("~/sdcard")
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
 
 class Handler(srv.BaseHTTPRequestHandler):
 
     content_manager = ContentManager()
-
-    def do_HEAD(self):
-        print("Callee:", self.client_address)
-        print("Path:", self.path)
-        self.send_response(HTTPStatus.OK)
-        self.end_headers()
 
     def do_GET(self):
         """
@@ -38,6 +30,8 @@ class Handler(srv.BaseHTTPRequestHandler):
             content = self.content_manager.get_printer_status()
         elif self.path == CLUSTER_API + "print_jobs":
             content = self.content_manager.get_print_jobs()
+        elif self.path == CLUSTER_API + "materials":
+            content = self.content_manager.get_materials()
         else:
             self.send_response(HTTPStatus.NOT_FOUND)
             self.end_headers()
@@ -47,19 +41,27 @@ class Handler(srv.BaseHTTPRequestHandler):
         json.dump(content, self.wfile)
 
     def do_POST(self):
-        self.send_response(HTTPStatus.OK)
-        self.end_headers()
         if self.headers.getmaintype() == "multipart":
             boundary = self.headers.getparam("boundary")
             length = int(self.headers.get("Content-Length", 0))
-            parser = MimeParser(self.rfile, boundary, length)
-            submessages = parser.parse()
+            try:
+                parser = MimeParser(self.rfile, boundary, length)
+                submessages = parser.parse()
+            except:
+                self.send_response(HTTPStatus.BAD_REQUEST)
+            else:
+                self.send_response(HTTPStatus.NO_CONTENT)
+        else:
+            self.send_response(HTTPStatus.BAD_REQUEST)
+        self.end_headers()
 
     def do_PUT(self):
-        self.do_POST()
+        self.send_response(HTTPStatus.NOT_IMPLEMENTED)
+        self.end_headers()
 
     def do_DELETE(self):
-        self.do_POST()
+        self.send_response(HTTPStatus.NOT_IMPLEMENTED)
+        self.end_headers()
 
     #def log_message(self, format, *args):
     #    """Overwriting for specific logging"""
@@ -126,14 +128,14 @@ class MimeParser(object):
         Raising StopIteration breaks the loop in self.parse().
         """
         # Previous message is finished
-        if line.strip() == "--" + self.boundary:
+        if line.startswith("--" + self.boundary):
             if self._current_body:
                 self.submessages[-1].set_payload(self._current_body.rstrip("\r\n"))
                 self._current_body = ""
             self._state = self.HEADERS # Read headers next
-        # This is the last line of the MIME message
-        elif line.strip() == "--" + self.boundary + "--":
-            raise StopIteration()
+            # This is the last line of the MIME message
+            if line.strip() == "--" + self.boundary + "--":
+                raise StopIteration()
         # Parse dependent on _state
         elif self._state == self.HEADERS:
             self._parse_headers(line)

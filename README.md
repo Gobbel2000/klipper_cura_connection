@@ -74,9 +74,9 @@ All come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
 |Name                   |Type   |URL (/cluster-api/v1 + .)      |Data (sent or requested)       |Notes
 |-----------------------|-------|-------------------------------|-------------------------------|-----------------------
 |getSystem              |GET    |!/api/v1/system                |PrinterSystemStatus            |For manual connection
-|getMaterials           |GET    |/materials                     |ClusterMaterial                |
-|getPrinters            |GET    |/printers                      |ClusterPrinterStatus           |Periodically requested
-|getPrintJobs           |GET    |/print\_jobs                   |ClusterPrintJobStatus          |Periodically requested
+|getMaterials           |GET    |/materials                     |[ClusterMaterial]              |
+|getPrinters            |GET    |/printers                      |[ClusterPrinterStatus]         |Periodically requested
+|getPrintJobs           |GET    |/print\_jobs                   |[ClusterPrintJobStatus]        |Periodically requested
 |setPrintJobState       |PUT    |/print\_jobs/UUID/action       |("pause", "print", "abort")    |
 |movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |json{"to\_position": 0, "list": "queued"}|
 |forcePrintJob          |PUT    |/print\_jobs/UUID              |json{"force": True}            |
