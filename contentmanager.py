@@ -1,6 +1,9 @@
 from datetime import datetime
+import os
 import uuid
+import xml.etree.ElementTree as ET
 
+import curaconnection
 from Models.Http.ClusterMaterial import ClusterMaterial
 from Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
 from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
@@ -11,7 +14,7 @@ class ContentManager(object):
     def __init__(self):
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
-            firmware_version="5.2.11",
+            firmware_version=curaconnection.version,
             friendly_name="Super Sayan Printer",
             ip_address="192.168.178.50",
             machine_variant="Ultimaker 3",
@@ -22,6 +25,29 @@ class ContentManager(object):
             )
         self.print_jobs_by_uuid = {} # type: {UUID (str): ClusterPrinJobStatus}
         self.materials = [] # type: [ClusterMaterial]
+        self.parse_materials()
+
+    def parse_materials(self):
+        """Read all material files and generate a ClusterMaterial Model"""
+        mdir = "materials"
+        ns = {"m": "http://www.ultimaker.com/material", "cura": "http://www.ultimaker.com/cura"}
+        for fname in os.listdir(mdir):
+            if not fname.endswith(".xml.fdm_material"):
+                continue
+            path = os.path.join(mdir, fname)
+            tree = ET.parse(path)
+            root = tree.getroot()
+            metadata = root.find("m:metadata", ns)
+            uuid = metadata.find("m:GUID", ns).text
+            version = int(metadata.find("m:version", ns).text)
+            self.add_material(uuid, version)
+
+    def add_material(self, uuid, version):
+        new_material = ClusterMaterial(
+            guid=uuid,
+            version=version,
+            )
+        self.materials.append(new_material)
 
     def add_print_job(self, filename, time_total=0, force=False):
         uuid = self.new_uuid()
@@ -38,13 +64,6 @@ class ContentManager(object):
             constraints=[],
             )
         self.print_jobs_by_uuid[uuid] = new_print_job
-
-    def add_material(self, uuid, version):
-        new_material = ClusterMaterial(
-            guid=uuid,
-            version=version,
-            )
-        self.materials.append(new_materials)
 
     @staticmethod
     def new_uuid():

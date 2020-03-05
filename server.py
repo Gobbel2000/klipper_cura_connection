@@ -44,15 +44,24 @@ class Handler(srv.BaseHTTPRequestHandler):
         if self.headers.getmaintype() == "multipart":
             boundary = self.headers.getparam("boundary")
             length = int(self.headers.get("Content-Length", 0))
-            try:
-                parser = MimeParser(self.rfile, boundary, length)
-                submessages = parser.parse()
-            except:
-                self.send_response(HTTPStatus.BAD_REQUEST)
-            else:
-                self.send_response(HTTPStatus.NO_CONTENT)
+            if self.path == CLUSTER_API + "print_jobs/":
+                try:
+                    parser = MimeParser(self.rfile, boundary, length, "print_jobs", overwrite=False)
+                    submessages = parser.parse()
+                except:
+                    self.send_response(HTTPStatus.BAD_REQUEST)
+                else:
+                    self.send_response(HTTPStatus.NO_CONTENT)
+            elif self.path == CLUSTER_API + "materials/":
+                try:
+                    parser = MimeParser(self.rfile, boundary, length, "materials")
+                    submessages = parser.parse()
+                except:
+                    self.send_response(HTTPStatus.BAD_REQUEST)
+                else:
+                    self.send_response(HTTPStatus.OK) # Reply is checked specifically for 200
         else:
-            self.send_response(HTTPStatus.BAD_REQUEST)
+            self.send_response(HTTPStatus.NOT_IMPLEMENTED)
         self.end_headers()
 
     def do_PUT(self):
@@ -93,10 +102,12 @@ class MimeParser(object):
     BODY = 1
     FILE = 2
 
-    def __init__(self, fp, boundary, length):
+    def __init__(self, fp, boundary, length, out_dir, overwrite=True):
         self.fp = fp
         self.boundary = boundary
         self.bytes_left = length
+        self.out_dir = out_dir
+        self.overwrite = overwrite
         self.submessages = []
 
         # What we are reading right now. One of:
@@ -215,8 +226,9 @@ class MimeParser(object):
         """Initiate reading of the body depending on whether it is a file"""
         name = headers.get_param("name", header="Content-Disposition")
         if name == "file":
-            fpath = os.path.join(RECEIVE_DIR, headers.get_filename())
-            self.fpath = self._unique_path(fpath)
+            self.fpath = os.path.join(self.out_dir, headers.get_filename())
+            if not self.overwrite:
+                self.fpath = self._unique_path(self.fpath)
             self._state = self.FILE
         else:
             self._state = self.BODY
