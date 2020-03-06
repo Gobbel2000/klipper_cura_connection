@@ -69,16 +69,20 @@ sudo apt -y install iptables-persistent
 
 ## Info on possible requests
 
-All come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
+Most come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
 
-|Name                   |Type   |URL (/cluster-api/v1 + .)      |Data (sent or requested)       |Notes
+|Name                   |Type   |URL (/cluster-api/v1 if not !) |Data (sent or requested)       |Notes
 |-----------------------|-------|-------------------------------|-------------------------------|-----------------------
 |getSystem              |GET    |!/api/v1/system                |PrinterSystemStatus            |For manual connection
-|getMaterials           |GET    |/materials                     |[ClusterMaterial]              |
+|getMaterials           |GET    |/materials                     |[ClusterMaterial]              |Requested on startup
 |getPrinters            |GET    |/printers                      |[ClusterPrinterStatus]         |Periodically requested
 |getPrintJobs           |GET    |/print\_jobs                   |[ClusterPrintJobStatus]        |Periodically requested
 |setPrintJobState       |PUT    |/print\_jobs/UUID/action       |("pause", "print", "abort")    |
 |movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |json{"to\_position": 0, "list": "queued"}|
 |forcePrintJob          |PUT    |/print\_jobs/UUID              |json{"force": True}            |
 |deletePrintJob         |DELETE |/print\_jobs/UUID              |                               |
-|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|?                             |
+|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG works)       |Requested at job creation
+|startPrintJobUpload    |POST   |/print\_jobs/                  |owner & .gcode file (MIME)     |Sent at "Print over Network"
+|sendMaterials          |POST   |/materials/                    |.xml.fdm-material file (MIME) |Sent if not on printer
+|Video Stream           |GET    |!/?action=stream               |?                              |Open stream
+|View in Browser        |GET    |!/print\_jobs                  |?                              |Browser view
