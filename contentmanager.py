@@ -16,7 +16,7 @@ class ContentManager(object):
             enabled=True,
             firmware_version=curaconnection.version,
             friendly_name="Super Sayan Printer",
-            ip_address="192.168.178.50",
+            ip_address=curaconnection.address,
             machine_variant="Ultimaker 3",
             status="enabled",
             unique_name="super_sayan_printer",
@@ -28,7 +28,10 @@ class ContentManager(object):
         self.parse_materials()
 
     def parse_materials(self):
-        """Read all material files and generate a ClusterMaterial Model"""
+        """
+        Read all material files and generate a ClusterMaterial Model.
+        For the model only the GUID and version fields are required.
+        """
         mdir = "materials"
         ns = {"m": "http://www.ultimaker.com/material", "cura": "http://www.ultimaker.com/cura"}
         for fname in os.listdir(mdir):
@@ -84,9 +87,7 @@ class ContentManager(object):
 
     def get_printer_status(self):
         return [self.printer_status.serialize()]
-
     def get_print_jobs(self):
         return [m.serialize() for m in self.print_jobs_by_uuid.values()]
-
     def get_materials(self):
         return [m.serialize() for m in self.materials]

@@ -195,6 +195,7 @@ class MimeParser(object):
         buffer but do not belong to the file (everything past the first
         occurance of boundary).
         """
+        print(self.fpath)
         buflen = 1024
 
         # Use two buffers in case the boundary gets cut in half
@@ -266,8 +267,8 @@ class MimeParser(object):
         return path
 
 
-def get_server():
-    return srv.HTTPServer(("192.168.178.50", 8080), Handler)
+def get_server(addr):
+    return srv.HTTPServer((addr, 8080), Handler)
 
 if __name__ == "__main__":
     get_server().serve_forever()

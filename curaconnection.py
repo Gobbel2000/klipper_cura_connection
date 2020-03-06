@@ -14,14 +14,15 @@ from zeroconfhandler import ZeroConfHandler
 import server
 
 version = "5.2.11" # We need to disguise as Cura Connect for now
+address = "192.168.178.50" #TODO this is not as flexible as it could be
 
 class CuraConnectionModule(object):
 
     def __init__(self, config):
         logging.info("Cura Connection Module initializing...")
 
-        self.zeroconf_handler = ZeroConfHandler()
-        self.server = server.get_server()
+        self.zeroconf_handler = ZeroConfHandler(address)
+        self.server = server.get_server(address)
 
         if config is None:
             return
