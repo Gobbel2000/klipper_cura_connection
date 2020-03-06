@@ -32,6 +32,13 @@ class Handler(srv.BaseHTTPRequestHandler):
             content = self.content_manager.get_print_jobs()
         elif self.path == CLUSTER_API + "materials":
             content = self.content_manager.get_materials()
+        elif self.path.endswith("preview_image"):
+            with open("tux.png", "rb") as fp:
+                image = fp.read()
+            self.send_response(HTTPStatus.OK)
+            self.end_headers()
+            self.wfile.write(image)
+            return
         else:
             self.send_response(HTTPStatus.NOT_FOUND)
             self.end_headers()
@@ -51,6 +58,13 @@ class Handler(srv.BaseHTTPRequestHandler):
                 except:
                     self.send_response(HTTPStatus.BAD_REQUEST)
                 else:
+                    for msg in submessages:
+                        name = msg.get_param("name", header="Content-Disposition")
+                        if name == "file":
+                            fname = msg.get_filename()
+                        elif name == "owner":
+                            owner = msg.get_payload().strip()
+                    self.content_manager.add_print_job(fname, owner=owner)
                     self.send_response(HTTPStatus.NO_CONTENT)
             elif self.path == CLUSTER_API + "materials/":
                 try:

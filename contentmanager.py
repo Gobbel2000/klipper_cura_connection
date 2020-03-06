@@ -49,8 +49,7 @@ class ContentManager(object):
             )
         self.materials.append(new_material)
 
-    def add_print_job(self, filename, time_total=0, force=False):
-        uuid = self.new_uuid()
+    def add_print_job(self, filename, time_total=0, force=False, owner=None):
         new_print_job = ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=force,
@@ -59,9 +58,14 @@ class ContentManager(object):
             started=False,
             status="pause",
             time_total=time_total,
-            uuid=uuid,
+            time_elapsed=0,
+            uuid=self.new_uuid(),
             configuration=[{"extruder_index": 0}],
             constraints=[],
+            # Optional
+            owner=owner,
+            printer_uuid=self.printer_status.uuid,
+            assigned_to=self.printer_status.unique_name,
             )
         self.print_jobs_by_uuid[uuid] = new_print_job
 
