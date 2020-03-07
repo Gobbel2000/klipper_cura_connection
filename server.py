@@ -9,6 +9,7 @@ import json
 import os.path
 
 from contentmanager import ContentManager
+import curaconnection
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
@@ -72,10 +73,11 @@ class Handler(srv.BaseHTTPRequestHandler):
         boundary = self.headers.getparam("boundary")
         length = int(self.headers.get("Content-Length", 0))
         try:
-            parser = MimeParser(self.rfile, boundary, length, "print_jobs", overwrite=False)
+            parser = MimeParser(self.rfile, boundary, length,
+                curaconnection.SDCARD_PATH, overwrite=False)
             submessages = parser.parse()
         except:
-            self.send_response(HTTPStatus.BAD_REQUEST)
+            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
         else:
             for msg in submessages:
                 name = msg.get_param("name", header="Content-Disposition")
@@ -90,12 +92,14 @@ class Handler(srv.BaseHTTPRequestHandler):
         boundary = self.headers.getparam("boundary")
         length = int(self.headers.get("Content-Length", 0))
         try:
-            parser = MimeParser(self.rfile, boundary, length, "materials")
+            parser = MimeParser(self.rfile, boundary, length,
+                    curaconnection.MATERIAL_PATH)
             submessages = parser.parse()
         except:
-            self.send_response(HTTPStatus.BAD_REQUEST)
+            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
         else:
-            self.send_response(HTTPStatus.OK) # Reply is checked specifically for 200
+            # Reply is checked specifically for 200
+            self.send_response(HTTPStatus.OK)
 
     #def log_message(self, format, *args):
     #    """Overwriting for specific logging"""

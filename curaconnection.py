@@ -8,6 +8,7 @@ shutting down,  which is handled in the CuraConnectionModule class.
 """
 
 import logging
+import os
 import socket
 from threading import Thread
 
@@ -29,6 +30,8 @@ def get_ip():
 
 VERSION = "5.2.11" # We need to disguise as Cura Connect for now
 ADDRESS = get_ip()
+SDCARD_PATH = os.path.expanduser("~/sdcard")
+MATERIAL_PATH = os.path.expanduser("~/materials")
 
 class CuraConnectionModule(object):
 

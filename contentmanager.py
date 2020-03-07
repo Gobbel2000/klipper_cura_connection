@@ -34,12 +34,11 @@ class ContentManager(object):
         Read all material files and generate a ClusterMaterial Model.
         For the model only the GUID and version fields are required.
         """
-        mdir = "materials"
         ns = {"m": "http://www.ultimaker.com/material", "cura": "http://www.ultimaker.com/cura"}
-        for fname in os.listdir(mdir):
+        for fname in os.listdir(curaconnection.MATERIAL_PATH):
             if not fname.endswith(".xml.fdm_material"):
                 continue
-            path = os.path.join(mdir, fname)
+            path = os.path.join(curaconnection.MATERIAL_PATH, fname)
             tree = ET.parse(path)
             root = tree.getroot()
             metadata = root.find("m:metadata", ns)
@@ -54,15 +53,19 @@ class ContentManager(object):
             )
         self.materials.append(new_material)
 
-    def add_print_job(self, filename, time_total=1000, force=False, owner=None):
+    def add_print_job(self, filename, time_total=10000, force=False, owner=None):
         uuid_ = self.new_uuid()
+        if self.print_jobs_by_uuid:
+            status = "pause"
+        else:
+            status = "print"
         new_print_job = ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=force,
             machine_variant="Ultimaker 3",
             name=filename,
             started=False,
-            status="pause",
+            status=status,
             time_total=time_total,
             time_elapsed=0,
             uuid=uuid_,
