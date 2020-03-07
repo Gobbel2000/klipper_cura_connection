@@ -10,7 +10,6 @@ import os.path
 
 from contentmanager import ContentManager
 
-RECEIVE_DIR = os.path.expanduser("~/sdcard")
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
 
@@ -33,11 +32,15 @@ class Handler(srv.BaseHTTPRequestHandler):
         elif self.path == CLUSTER_API + "materials":
             content = self.content_manager.get_materials()
         elif self.path.endswith("preview_image"):
-            with open("tux.png", "rb") as fp:
-                image = fp.read()
             self.send_response(HTTPStatus.OK)
             self.end_headers()
-            self.wfile.write(image)
+            chunksize = 1024**2 # 1 MiB
+            with open("tux.png", "rb") as fp:
+                while True:
+                    chunk = fp.read(chunksize)
+                    if chunk == "":
+                        break
+                    self.wfile.write(chunk)
             return
         else:
             self.send_response(HTTPStatus.NOT_FOUND)
@@ -49,31 +52,10 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.headers.getmaintype() == "multipart":
-            boundary = self.headers.getparam("boundary")
-            length = int(self.headers.get("Content-Length", 0))
             if self.path == CLUSTER_API + "print_jobs/":
-                try:
-                    parser = MimeParser(self.rfile, boundary, length, "print_jobs", overwrite=False)
-                    submessages = parser.parse()
-                except:
-                    self.send_response(HTTPStatus.BAD_REQUEST)
-                else:
-                    for msg in submessages:
-                        name = msg.get_param("name", header="Content-Disposition")
-                        if name == "file":
-                            fname = msg.get_filename()
-                        elif name == "owner":
-                            owner = msg.get_payload().strip()
-                    self.content_manager.add_print_job(fname, owner=owner)
-                    self.send_response(HTTPStatus.NO_CONTENT)
+                self.post_print_job()
             elif self.path == CLUSTER_API + "materials/":
-                try:
-                    parser = MimeParser(self.rfile, boundary, length, "materials")
-                    submessages = parser.parse()
-                except:
-                    self.send_response(HTTPStatus.BAD_REQUEST)
-                else:
-                    self.send_response(HTTPStatus.OK) # Reply is checked specifically for 200
+                self.post_material()
         else:
             self.send_response(HTTPStatus.NOT_IMPLEMENTED)
         self.end_headers()
@@ -85,6 +67,35 @@ class Handler(srv.BaseHTTPRequestHandler):
     def do_DELETE(self):
         self.send_response(HTTPStatus.NOT_IMPLEMENTED)
         self.end_headers()
+
+    def post_print_job(self):
+        boundary = self.headers.getparam("boundary")
+        length = int(self.headers.get("Content-Length", 0))
+        try:
+            parser = MimeParser(self.rfile, boundary, length, "print_jobs", overwrite=False)
+            submessages = parser.parse()
+        except:
+            self.send_response(HTTPStatus.BAD_REQUEST)
+        else:
+            for msg in submessages:
+                name = msg.get_param("name", header="Content-Disposition")
+                if name == "file":
+                    fname = msg.get_filename()
+                elif name == "owner":
+                    owner = msg.get_payload().strip()
+            self.content_manager.add_print_job(fname, owner=owner)
+            self.send_response(HTTPStatus.NO_CONTENT)
+
+    def post_material(self):
+        boundary = self.headers.getparam("boundary")
+        length = int(self.headers.get("Content-Length", 0))
+        try:
+            parser = MimeParser(self.rfile, boundary, length, "materials")
+            submessages = parser.parse()
+        except:
+            self.send_response(HTTPStatus.BAD_REQUEST)
+        else:
+            self.send_response(HTTPStatus.OK) # Reply is checked specifically for 200
 
     #def log_message(self, format, *args):
     #    """Overwriting for specific logging"""

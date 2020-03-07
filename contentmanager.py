@@ -14,14 +14,16 @@ class ContentManager(object):
     def __init__(self):
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
-            firmware_version=curaconnection.version,
+            firmware_version=curaconnection.VERSION,
             friendly_name="Super Sayan Printer",
-            ip_address=curaconnection.address,
+            ip_address=curaconnection.ADDRESS,
             machine_variant="Ultimaker 3",
             status="enabled",
             unique_name="super_sayan_printer",
             uuid=self.new_uuid(),
-            configuration=[{"extruder_index": 0}],
+            configuration=[{"extruder_index": 0,
+                "material": {"brand": "Generic", "guid": "60636bb4-518f-42e7-8237-fe77b194ebe0",
+                "color": "#8cb219", "material": "ABS"}}],
             )
         self.print_jobs_by_uuid = {} # type: {UUID (str): ClusterPrinJobStatus}
         self.materials = [] # type: [ClusterMaterial]
@@ -52,7 +54,8 @@ class ContentManager(object):
             )
         self.materials.append(new_material)
 
-    def add_print_job(self, filename, time_total=0, force=False, owner=None):
+    def add_print_job(self, filename, time_total=1000, force=False, owner=None):
+        uuid_ = self.new_uuid()
         new_print_job = ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=force,
@@ -62,7 +65,7 @@ class ContentManager(object):
             status="pause",
             time_total=time_total,
             time_elapsed=0,
-            uuid=self.new_uuid(),
+            uuid=uuid_,
             configuration=[{"extruder_index": 0}],
             constraints=[],
             # Optional
@@ -70,7 +73,7 @@ class ContentManager(object):
             printer_uuid=self.printer_status.uuid,
             assigned_to=self.printer_status.unique_name,
             )
-        self.print_jobs_by_uuid[uuid] = new_print_job
+        self.print_jobs_by_uuid[uuid_] = new_print_job
 
     @staticmethod
     def new_uuid():

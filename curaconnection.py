@@ -8,21 +8,35 @@ shutting down,  which is handled in the CuraConnectionModule class.
 """
 
 import logging
+import socket
 from threading import Thread
 
 from zeroconfhandler import ZeroConfHandler
 import server
 
-version = "5.2.11" # We need to disguise as Cura Connect for now
-address = "192.168.178.50" #TODO this is not as flexible as it could be
+def get_ip():
+    """https://stackoverflow.com/a/28950776"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
+VERSION = "5.2.11" # We need to disguise as Cura Connect for now
+ADDRESS = get_ip()
 
 class CuraConnectionModule(object):
 
     def __init__(self, config):
         logging.info("Cura Connection Module initializing...")
 
-        self.zeroconf_handler = ZeroConfHandler(address)
-        self.server = server.get_server(address)
+        self.zeroconf_handler = ZeroConfHandler(ADDRESS)
+        self.server = server.get_server(ADDRESS)
 
         if config is None:
             return
