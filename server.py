@@ -16,7 +16,10 @@ CLUSTER_API = "/cluster-api/v1/"
 
 class Handler(srv.BaseHTTPRequestHandler):
 
-    content_manager = ContentManager()
+    def __init__(self, **kwargs):
+        self.content_manager = ContentManager()
+        self.module = curaconnection.module
+        super(Handler, self).__init__(**kwargs)
 
     def do_GET(self):
         """
@@ -74,7 +77,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         try:
             parser = MimeParser(self.rfile, boundary, length,
-                curaconnection.SDCARD_PATH, overwrite=False)
+                self.module.SDCARD_PATH, overwrite=False)
             submessages = parser.parse()
         except:
             self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -93,7 +96,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         try:
             parser = MimeParser(self.rfile, boundary, length,
-                    curaconnection.MATERIAL_PATH)
+                    self.module.MATERIAL_PATH)
             submessages = parser.parse()
         except:
             self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)

@@ -12,11 +12,12 @@ from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 class ContentManager(object):
 
     def __init__(self):
+        self.module = curaconnection.module
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
-            firmware_version=curaconnection.VERSION,
+            firmware_version=self.module.VERSION,
             friendly_name="Super Sayan Printer",
-            ip_address=curaconnection.ADDRESS,
+            ip_address=self.module.ADDRESS,
             machine_variant="Ultimaker 3",
             status="enabled",
             unique_name="super_sayan_printer",
@@ -35,10 +36,10 @@ class ContentManager(object):
         For the model only the GUID and version fields are required.
         """
         ns = {"m": "http://www.ultimaker.com/material", "cura": "http://www.ultimaker.com/cura"}
-        for fname in os.listdir(curaconnection.MATERIAL_PATH):
+        for fname in os.listdir(self.module.MATERIAL_PATH):
             if not fname.endswith(".xml.fdm_material"):
                 continue
-            path = os.path.join(curaconnection.MATERIAL_PATH, fname)
+            path = os.path.join(self.module.MATERIAL_PATH, fname)
             tree = ET.parse(path)
             root = tree.getroot()
             metadata = root.find("m:metadata", ns)
@@ -59,6 +60,8 @@ class ContentManager(object):
             status = "pause"
         else:
             status = "print"
+            self.module.send_print(filename)
+
         new_print_job = ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=force,

@@ -50,6 +50,10 @@ to printers added in Cura.
 UFPWriter and UFPReader plugins of Cura can work. Otherwise
 an exception is generated when trying to send a file.
 
+Install the latest version of zeroconf that supports Python 2:
+
+`pip2 install zeroconf==0.19.1`
+
 ### Port redirection
 
 Root privileges are required to listen to port 80, the default HTTP port.
