@@ -12,8 +12,9 @@ import os
 import socket
 from threading import Thread
 
-from zeroconfhandler import ZeroConfHandler
+from contentmanager import ContentManager
 import server
+from zeroconfhandler import ZeroConfHandler
 
 
 class CuraConnectionModule(object):
@@ -26,6 +27,10 @@ class CuraConnectionModule(object):
         self.ADDRESS = self.get_ip()
         self.SDCARD_PATH = os.path.expanduser("~/sdcard")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
+
+        self.content_manager = ContentManager(self)
+        self.zeroconf_handler = ZeroConfHandler(self.ADDRESS)
+        self.server = server.get_server(self)
 
         if config is None:
             return
@@ -43,9 +48,7 @@ class CuraConnectionModule(object):
 
     def start(self):
         """Start the zeroconf service and the server in a seperate thread"""
-        self.zeroconf_handler = ZeroConfHandler(self.ADDRESS)
         self.zeroconf_handler.start() # Non-blocking
-        self.server = server.get_server(self.ADDRESS)
         self.server_thread = Thread(
             target=self.server.serve_forever,
             name="Cura_Connection_Server")
@@ -65,17 +68,17 @@ class CuraConnectionModule(object):
 
     @staticmethod
     def get_ip():
-       """https://stackoverflow.com/a/28950776"""
-       s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-       try:
-           # doesn't even have to be reachable
-           s.connect(('10.255.255.255', 1))
-           IP = s.getsockname()[0]
-       except:
-           IP = '127.0.0.1'
-       finally:
-           s.close()
-       return IP
+        """https://stackoverflow.com/a/28950776"""
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # doesn't even have to be reachable
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        except:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
 
 
 def load_config(config):
@@ -83,8 +86,6 @@ def load_config(config):
     module = CuraConnectionModule(config)
     module.start()
     return module
-
-module = None
 
 if __name__ == "__main__":
     import time

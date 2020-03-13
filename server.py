@@ -8,18 +8,17 @@ import BaseHTTPServer as srv
 import json
 import os.path
 
-from contentmanager import ContentManager
-import curaconnection
-
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
 
 class Handler(srv.BaseHTTPRequestHandler):
 
-    def __init__(self, **kwargs):
-        self.content_manager = ContentManager()
-        self.module = curaconnection.module
-        super(Handler, self).__init__(**kwargs)
+    def __init__(self, request, client_address, server):
+        """This is the worst thing ever but it somehow works"""
+        self.module = server.module
+        self.content_manager = self.module.content_manager
+        srv.BaseHTTPRequestHandler.__init__(
+                self, request, client_address, server)
 
     def do_GET(self):
         """
@@ -128,6 +127,10 @@ class MimeParser(object):
     fp          The file pointer to parse from
     boundary    The MIME boundary, as specified in the main headers
     length      Length of the body, as specified in the main headers
+    out_dir     The directory where any files will be written into
+    overwrite   In case a file with the same name exists overwrite it
+                if True, write to a unique, indexed name otherwise.
+                Defaults to True.
     """
 
     HEADERS = 0
@@ -285,8 +288,12 @@ class MimeParser(object):
         return path
 
 
-def get_server(addr):
-    return srv.HTTPServer((addr, 8080), Handler)
+class Server(srv.HTTPServer):
+    """Wrapper class to store the module in the server"""
+    def __init__(self, server_address, RequestHandler, module):
+        srv.HTTPServer.__init__(self, server_address, RequestHandler)
+        self.module = module
 
-if __name__ == "__main__":
-    get_server().serve_forever()
+
+def get_server(module):
+    return Server((module.ADDRESS, 8080), Handler, module)

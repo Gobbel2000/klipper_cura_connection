@@ -3,7 +3,6 @@ import os
 import uuid
 import xml.etree.ElementTree as ET
 
-import curaconnection
 from Models.Http.ClusterMaterial import ClusterMaterial
 from Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
 from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
@@ -11,8 +10,8 @@ from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
 class ContentManager(object):
 
-    def __init__(self):
-        self.module = curaconnection.module
+    def __init__(self, module):
+        self.module = module
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
             firmware_version=self.module.VERSION,
