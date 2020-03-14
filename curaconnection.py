@@ -8,6 +8,7 @@ shutting down,  which is handled in the CuraConnectionModule class.
 """
 
 import logging
+import logging.handlers
 import os
 import socket
 from threading import Thread
@@ -16,11 +17,19 @@ from contentmanager import ContentManager
 import server
 from zeroconfhandler import ZeroConfHandler
 
+LOGFILE = "logs/server.log"
+klippy_logger = logging.getLogger()
+assert(klippy_logger.name == "root")
+server_logger = logging.getLogger("root.server") # Inherits level
+server_logger.propagate = False # Avoid Server logs in klippy logs
+
 
 class CuraConnectionModule(object):
 
     def __init__(self, config):
-        logging.info("Cura Connection Module initializing...")
+        self.testing = config is None
+        self.configure_logging()
+        klippy_logger.info("Cura Connection Module initializing...")
 
         # Global variables
         self.VERSION = "5.2.11" # We need to disguise as Cura Connect for now
@@ -32,10 +41,8 @@ class CuraConnectionModule(object):
         self.zeroconf_handler = ZeroConfHandler(self.ADDRESS)
         self.server = server.get_server(self)
 
-        if config is None:
-            self.testing = True
+        if self.testing:
             return
-        self.testing = False
         self.config = config
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
@@ -44,6 +51,26 @@ class CuraConnectionModule(object):
         self.printer.register_event_handler("klippy:shutdown", self.stop)
         self.printer.register_event_handler("klippy:exception", self.stop)
 
+    def configure_logging(self):
+        """Add log handler based on testing"""
+        if self.testing:
+            # Log to console in testing mode
+            logging.basicConfig(level=logging.DEBUG)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter("%(levelname)s: %(message)s")
+        else:
+            with open(LOGFILE, "a") as fp:
+                fp.write("\n=== RESTART ===\n\n")
+            handler = logging.handlers.RotatingFileHandler(
+                    filename=LOGFILE,
+                    maxBytes=4194304, # max 4 MiB per file
+                    backupCount=3, # up to 4 files total
+                    delay=True, # Open file only once needed
+                )
+            formatter = logging.Formatter("%(levelname)s: %(message)s")
+        handler.setFormatter(formatter)
+        server_logger.addHandler(handler)
+
     def handle_connect(self):
         self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
         self.start()
@@ -51,22 +78,24 @@ class CuraConnectionModule(object):
     def start(self):
         """Start the zeroconf service and the server in a seperate thread"""
         self.zeroconf_handler.start() # Non-blocking
+        klippy_logger.debug("Cura Connection Zeroconf service started")
         self.server_thread = Thread(
             target=self.server.serve_forever,
             name="Cura_Connection_Server")
         self.server_thread.start()
-        logging.info("Cura Connection Server started")
+        klippy_logger.debug("Cura Connection Server started")
 
     def stop(self):
         """This might take a little while, be patient"""
         self.zeroconf_handler.stop()
         self.server.shutdown()
         self.server_thread.join()
+        klippy_logger.debug("Cura Connection Server shut down")
 
     def send_print(self, filename):
         """Start a print in klipper"""
         if self.testing:
-            print("Start printing {}".format(filename))
+            klippy_logger.info("Start printing {}".format(filename))
             return
         path = os.path.join(self.SDCARD_PATH, filename)
         self.reactor.register_async_callback(lambda e: self.sdcard.add_printjob(path))

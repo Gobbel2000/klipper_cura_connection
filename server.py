@@ -4,10 +4,14 @@ import email
 import httplib as HTTPStatus
 import BaseHTTPServer as srv
 import json
+import logging
 import os.path
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
+
+logger = logging.getLogger("root.server")
+
 
 class Handler(srv.BaseHTTPRequestHandler):
 
@@ -101,12 +105,12 @@ class Handler(srv.BaseHTTPRequestHandler):
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
 
-    #def log_message(self, format, *args):
-    #    """Overwriting for specific logging"""
-    #    message = ("%s - - [%s] %s\n" %
-    #                     (self.address_string(),
-    #                      self.log_date_time_string(),
-    #                      format%args))
+    def log_message(self, format, *args):
+        message = ("%s - - [%s] %s" %
+                    (self.address_string(),
+                     self.log_date_time_string(),
+                     format%args))
+        logger.info(message)
 
 
 class MimeParser(object):
@@ -214,7 +218,7 @@ class MimeParser(object):
         buffer but do not belong to the file (everything past the first
         occurance of boundary).
         """
-        print(self.fpath)
+        logger.debug("Writing file: {}".format(self.fpath))
         buflen = 1024
 
         # Use two buffers in case the boundary gets cut in half
