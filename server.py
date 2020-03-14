@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 import email
 #PYTHON3: from http import HTTPStatus
 #PYTHON3: import http.server as srv

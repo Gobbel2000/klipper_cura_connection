@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 import socket
 import zeroconf as zc
 
@@ -35,14 +33,3 @@ class ZeroConfHandler(object):
         """Stop the zeroconf service"""
         self.zeroconf.unregister_service(self.info)
         self.zeroconf.close()
-
-if __name__ == "__main__":
-    from time import sleep
-    handler = ZeroConfHandler()
-    handler.start()
-    while True:
-        try:
-            sleep(0.1)
-        except KeyboardInterrupt:
-            handler.stop()
-            break
