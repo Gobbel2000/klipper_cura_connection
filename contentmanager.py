@@ -18,7 +18,7 @@ class ContentManager(object):
             friendly_name="Super Sayan Printer",
             ip_address=self.module.ADDRESS,
             machine_variant="Ultimaker 3",
-            status="enabled",
+            status="enabled", # ?
             unique_name="super_sayan_printer",
             uuid=self.new_uuid(),
             configuration=[{"extruder_index": 0,
@@ -67,7 +67,7 @@ class ContentManager(object):
             machine_variant="Ultimaker 3",
             name=filename,
             started=False,
-            status=status,
+            status=status, # one of: pause, print, abort
             time_total=time_total,
             time_elapsed=0,
             uuid=uuid_,

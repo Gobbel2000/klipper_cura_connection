@@ -2,15 +2,6 @@
 
 A Klipper module that enables a network connection with Cura.
 
-## Important files to look at:
-
-* cura/Machines/Models/DiscoveredPrintersModel.py
-* cura/PrinterOutput/NetworkedPrinterOutputDevice.py
-
-### Objects
-
-* GlobalStack (Machine) and ContainerStack etc.
-* OutputDevice(Manager)
 
 ## Good to know
 
@@ -20,29 +11,35 @@ set as name in the zeroconf property dictionary.
 Device refers to detected, usable printers, Machine refers
 to printers added in Cura.
 
+
 ## TODO
 
-* Handle all possible requests in HTTP Server (see table)
+* Try to make **queues** show in Cura
+* Full integration with **Klipper** and updating data
+* Handle all possible **requests** in HTTP Server (see table)
+* Figure out if it is really necessary to disguise as an Ultimaker3  
+    Otherwise custom sizes will need to be set manually.
+* Figure out a way to determine a unique printer **name** (hostname?)
+
+### Would also be nice
+
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
-    Possibly use ufp.
-* Figure out if it is really necessary to disguise as an Ultimaker3  
-    Otherwise custom sizes will need to be set differently.
-* Figure out a way to determine a unique printer name (hostname?)
-* Receive IPv4 Address from network manager  
-    (dbus implemented function exists: kgui/nm\_dbus.py)
-* Implement testing mode to test the module without klipper
+    Possibly use _ufp_?
 * Video stream?
+
 
 ## What's happening in Cura?
 
 * The Output plugin detects networked printers via zeroconf
-* They get checked for some values in the propertie dict
+* They get checked for some values in the zeroconf property dict
 * When the user adds that device, a new machine (Stack) is created
 * Further communication happens via the IP address on HTTP
-* Every 2 seconds \_update() is called on all device objects.
-    This continuously requests printers and print_jobs status data
-* When clicking "Print over network" the file is sent in a multipart POST request.
+* On Startup missing _material_ xml files are sent to the printer
+* Every 2 seconds _\_update()_ is called on all device objects.
+    This continuously requests _printers_ and _print_jobs_ status data
+* When clicking _Print over network_ the file is sent in a multipart POST request.
+
 
 ## Setup
 
@@ -68,6 +65,7 @@ echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo deb
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 sudo apt -y install iptables-persistent
 ```
+
 
 ## Info on possible requests
 

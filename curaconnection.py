@@ -33,7 +33,9 @@ class CuraConnectionModule(object):
         self.server = server.get_server(self)
 
         if config is None:
+            self.testing = True
             return
+        self.testing = False
         self.config = config
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
@@ -63,6 +65,9 @@ class CuraConnectionModule(object):
 
     def send_print(self, filename):
         """Start a print in klipper"""
+        if self.testing:
+            print("Start printing {}".format(filename))
+            return
         path = os.path.join(self.SDCARD_PATH, filename)
         self.reactor.register_async_callback(lambda e: self.sdcard.add_printjob(path))
 
