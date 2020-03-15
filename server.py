@@ -48,8 +48,8 @@ class Handler(srv.BaseHTTPRequestHandler):
                     self.wfile.write(chunk)
             return
         else:
-            self.send_response(HTTPStatus.NOT_FOUND)
-            self.end_headers()
+            # NOTE: send_error() calls end_headers()
+            self.send_error(HTTPStatus.NOT_FOUND)
             return
         self.send_response(HTTPStatus.OK)
         self.end_headers()
@@ -62,16 +62,13 @@ class Handler(srv.BaseHTTPRequestHandler):
             elif self.path == CLUSTER_API + "materials/":
                 self.post_material()
         else:
-            self.send_response(HTTPStatus.NOT_IMPLEMENTED)
-        self.end_headers()
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
 
     def do_PUT(self):
-        self.send_response(HTTPStatus.NOT_IMPLEMENTED)
-        self.end_headers()
+        self.send_error(HTTPStatus.NOT_IMPLEMENTED)
 
     def do_DELETE(self):
-        self.send_response(HTTPStatus.NOT_IMPLEMENTED)
-        self.end_headers()
+        self.send_error(HTTPStatus.NOT_IMPLEMENTED)
 
     def post_print_job(self):
         boundary = self.headers.getparam("boundary")
@@ -81,7 +78,7 @@ class Handler(srv.BaseHTTPRequestHandler):
                 self.module.SDCARD_PATH, overwrite=False)
             submessages = parser.parse()
         except:
-            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
         else:
             for msg in submessages:
                 name = msg.get_param("name", header="Content-Disposition")
@@ -91,6 +88,7 @@ class Handler(srv.BaseHTTPRequestHandler):
                     owner = msg.get_payload().strip()
             self.content_manager.add_print_job(fname, owner=owner)
             self.send_response(HTTPStatus.NO_CONTENT)
+            self.end_headers()
 
     def post_material(self):
         boundary = self.headers.getparam("boundary")
@@ -100,17 +98,31 @@ class Handler(srv.BaseHTTPRequestHandler):
                     self.module.MATERIAL_PATH)
             submessages = parser.parse()
         except:
-            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
         else:
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
+            self.end_headers()
+
+    def log_error(self, format, *args):
+        """Similar to log_message, but log under loglevel ERROR"""
+        message = ("\t%s - - [%s] %s" %
+                (self.address_string(),
+                 self.log_date_time_string(),
+                 format%args))
+        logger.error(message)
 
     def log_message(self, format, *args):
-        message = ("%s - - [%s] %s" %
-                    (self.address_string(),
-                     self.log_date_time_string(),
-                     format%args))
-        logger.info(message)
+        message = ("\t%s - - [%s] %s" %
+                (self.address_string(),
+                 self.log_date_time_string(),
+                 format%args))
+        if (self.path == CLUSTER_API + "printers" or
+            self.path == CLUSTER_API + "print_jobs"):
+            # Put periodic requests to DEBUG
+            logger.debug(message)
+        else:
+            logger.info(message)
 
 
 class MimeParser(object):
