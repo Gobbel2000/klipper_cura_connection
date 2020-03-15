@@ -21,10 +21,17 @@ class ContentManager(object):
             status="enabled", # ?
             unique_name="super_sayan_printer",
             uuid=self.new_uuid(),
-            configuration=[{"extruder_index": 0,
-                "material": {"brand": "Generic", "guid": "60636bb4-518f-42e7-8237-fe77b194ebe0",
-                "color": "#8cb219", "material": "ABS"}}],
-            )
+            configuration=[{ # Should be updated
+                "extruder_index": 0,
+                "material": {
+                    "brand": "Generic",
+                    "guid": "60636bb4-518f-42e7-8237-fe77b194ebe0",
+                    "color": "#8cb219",
+                    "material": "ABS",
+                    },
+                },
+            ],
+        )
         self.print_jobs_by_uuid = {} # type: {UUID (str): ClusterPrinJobStatus}
         self.materials = [] # type: [ClusterMaterial]
         self.parse_materials()
@@ -34,7 +41,8 @@ class ContentManager(object):
         Read all material files and generate a ClusterMaterial Model.
         For the model only the GUID and version fields are required.
         """
-        ns = {"m": "http://www.ultimaker.com/material", "cura": "http://www.ultimaker.com/cura"}
+        ns = {"m": "http://www.ultimaker.com/material",
+              "cura": "http://www.ultimaker.com/cura"}
         for fname in os.listdir(self.module.MATERIAL_PATH):
             if not fname.endswith(".xml.fdm_material"):
                 continue
@@ -47,13 +55,16 @@ class ContentManager(object):
             self.add_material(uuid, version)
 
     def add_material(self, uuid, version):
+        """Add to the list of local materials"""
+        #TODO: read in filament_manager
         new_material = ClusterMaterial(
             guid=uuid,
             version=version,
-            )
+        )
         self.materials.append(new_material)
 
-    def add_print_job(self, filename, time_total=10000, force=False, owner=None):
+    def add_print_job(self, filename, time_total=10000, force=False,
+            owner=None):
         uuid_ = self.new_uuid()
         if self.print_jobs_by_uuid:
             status = "pause"
@@ -66,10 +77,10 @@ class ContentManager(object):
             force=force,
             machine_variant="Ultimaker 3",
             name=filename,
-            started=False,
-            status=status, # one of: pause, print, abort
+            started=False, # Update
+            status=status, # Update, one of: pause, print, abort
             time_total=time_total,
-            time_elapsed=0,
+            time_elapsed=0, # Update
             uuid=uuid_,
             configuration=[{"extruder_index": 0}],
             constraints=[],
@@ -77,8 +88,16 @@ class ContentManager(object):
             owner=owner,
             printer_uuid=self.printer_status.uuid,
             assigned_to=self.printer_status.unique_name,
-            )
+        )
         self.print_jobs_by_uuid[uuid_] = new_print_job
+
+    def update_printers(self):
+        """Update currently loaded material"""
+        pass
+
+    def update_print_jobs(self):
+        """Update status, elapsed time"""
+        pass
 
     @staticmethod
     def new_uuid():
@@ -94,8 +113,10 @@ class ContentManager(object):
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     def get_printer_status(self):
+        self.update_printers()
         return [self.printer_status.serialize()]
     def get_print_jobs(self):
+        self.update_print_jobs()
         return [m.serialize() for m in self.print_jobs_by_uuid.values()]
     def get_materials(self):
         return [m.serialize() for m in self.materials]

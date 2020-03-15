@@ -42,11 +42,17 @@ class CuraConnectionModule(object):
         self.server = server.get_server(self)
 
         if self.testing:
+            import site
+            p = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+            site.addsitedir(p)
+            import filament_manager
+            self.filament_manager = filament_manager.load_config(None)
             return
         self.config = config
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
-        self.printer.register_event_handler("klippy:connect", self.handle_connect)
+        self.printer.register_event_handler(
+                "klippy:connect", self.handle_connect)
         self.printer.register_event_handler("klippy:disconnect", self.stop)
         self.printer.register_event_handler("klippy:shutdown", self.stop)
         self.printer.register_event_handler("klippy:exception", self.stop)
@@ -72,6 +78,8 @@ class CuraConnectionModule(object):
         server_logger.addHandler(handler)
 
     def handle_connect(self):
+        self.filament_manager = self.printer.lookup_object(
+                "filament_manager", None)
         self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
         self.start()
 
@@ -98,7 +106,8 @@ class CuraConnectionModule(object):
             klippy_logger.info("Start printing {}".format(filename))
             return
         path = os.path.join(self.SDCARD_PATH, filename)
-        self.reactor.register_async_callback(lambda e: self.sdcard.add_printjob(path))
+        self.reactor.register_async_callback(
+                lambda e: self.sdcard.add_printjob(path))
 
     @staticmethod
     def get_ip():

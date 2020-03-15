@@ -52,6 +52,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
         json.dump(content, self.wfile)
 
@@ -69,6 +70,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+
 
     def post_print_job(self):
         boundary = self.headers.getparam("boundary")
@@ -190,7 +192,8 @@ class MimeParser(object):
         # Previous message is finished
         if line.startswith("--" + self.boundary):
             if self._current_body:
-                self.submessages[-1].set_payload(self._current_body.rstrip("\r\n"))
+                self.submessages[-1].set_payload(
+                        self._current_body.rstrip("\r\n"))
                 self._current_body = ""
             self._state = self.HEADERS # Read headers next
             # This is the last line of the MIME message
@@ -251,7 +254,8 @@ class MimeParser(object):
                 self.bytes_left -= buflen
             if self.bytes_left != 0:
                 # Catch the rest of the last line
-                remaining_lines = (buf1 + buf2 + self.fp.readline()).splitlines(True)
+                remaining_lines = (
+                        buf1 + buf2 + self.fp.readline()).splitlines(True)
             else:
                 remaining_lines = (buf1 + buf2).splitlines(True)
 
