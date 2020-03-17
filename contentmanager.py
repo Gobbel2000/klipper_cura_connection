@@ -12,16 +12,18 @@ class ContentManager(object):
 
     def __init__(self, module):
         self.module = module
+
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
             firmware_version=self.module.VERSION,
             friendly_name="Super Sayan Printer",
             ip_address=self.module.ADDRESS,
             machine_variant="Ultimaker 3",
-            status="enabled", # ?
+            # One of: idle, printing, error, maintenance, booting
+            status="idle",
             unique_name="super_sayan_printer",
             uuid=self.new_uuid(),
-            configuration=[{ # Should be updated
+            configuration=[{ #TODO update
                 "extruder_index": 0,
                 "material": {
                     "brand": "Generic",
@@ -32,8 +34,9 @@ class ContentManager(object):
                 },
             ],
         )
-        self.print_jobs_by_uuid = {} # type: {UUID (str): ClusterPrinJobStatus}
+        self.print_jobs = [] # type: [ClusterPrinJobStatus]
         self.materials = [] # type: [ClusterMaterial]
+
         self.parse_materials()
 
     def parse_materials(self):
@@ -63,41 +66,77 @@ class ContentManager(object):
         )
         self.materials.append(new_material)
 
-    def add_print_job(self, filename, time_total=10000, force=False,
-            owner=None):
-        uuid_ = self.new_uuid()
-        if self.print_jobs_by_uuid:
-            status = "pause"
-        else:
-            status = "print"
-            self.module.send_print(filename)
-
-        new_print_job = ClusterPrintJobStatus(
+    def get_print_job_status(self, filename):
+        return ClusterPrintJobStatus(
             created_at=self.get_time_str(),
-            force=force,
+            force=False,
             machine_variant="Ultimaker 3",
             name=filename,
-            started=False, # Update
-            status=status, # Update, one of: pause, print, abort
-            time_total=time_total,
-            time_elapsed=0, # Update
-            uuid=uuid_,
+            started=False,
+            # One of: wait_cleanup, finished, sent_to_printer, pre_print,
+            # pausing, paused, resuming, queued, printing, post_print
+            # (possibly also aborted and aborting)
+            status="queued",
+            time_total=0, #TODO set from the beginning
+            time_elapsed=0,
+            uuid=self.new_uuid(),
             configuration=[{"extruder_index": 0}],
             constraints=[],
-            # Optional
-            owner=owner,
-            printer_uuid=self.printer_status.uuid,
             assigned_to=self.printer_status.unique_name,
+            printer_uuid=self.printer_status.uuid,
         )
-        self.print_jobs_by_uuid[uuid_] = new_print_job
+
+    def add_test_print(self, filename):
+        """
+        Testing only: add a print job outside of klipper and pretend
+        we're printing.
+        """
+        self.print_jobs.append(self.get_print_job_status(filename))
+        self.print_jobs[0].status = "printing"
+        self.print_jobs[0].started = True
+        self.print_jobs[0].time_total = 10000
+        self.print_jobs[0].time_elapsed += 2
+
+        self.printer_status.status = "printing"
 
     def update_printers(self):
-        """Update currently loaded material"""
-        pass
+        """Update currently loaded material (TODO) and state"""
+        state = self.module.sdcard.get_status(
+                self.module.reactor.monotonic())["state"]
+        if state in {"printing", "paused"}:
+            self.printer_status.status = "printing"
+        else:
+            self.printer_status.status = "idle"
 
     def update_print_jobs(self):
-        """Update status, elapsed time"""
-        pass
+        """Read queue, Update status, elapsed time"""
+        s = self.module.sdcard.get_status(
+                self.module.reactor.monotonic())
+
+        # Update self.print_jobs with the queue
+        new_print_jobs = []
+        for i, fname in enumerate(s["queued_files"]):
+            print_job = None
+            for j, pj in enumerate(self.print_jobs):
+                if pj.name == fname:
+                    print_job = self.print_jobs.pop(j)
+                    break
+            if print_job is None: # Newly add print job
+                new_print_jobs.append(self.get_print_job_status(fname))
+            else:
+                new_print_jobs.append(print_job)
+        self.print_jobs = new_print_jobs
+
+        if self.print_jobs: # Update first print job if there is one
+            elapsed = self.module.sdcard.get_printed_time(
+                    self.module.reactor.monotonic())
+            self.print_jobs[0].time_elapsed = elapsed
+            self.print_jobs[0].time_total = (
+                    s["estimated_remaining_time"] + elapsed)
+            if s["state"] in {"printing", "paused"}: # Should cover all cases
+                self.print_jobs[0].status = s["state"]
+            if s["state"] == "printing":
+                self.print_jobs[0].started = True
 
     @staticmethod
     def new_uuid():
@@ -113,10 +152,12 @@ class ContentManager(object):
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     def get_printer_status(self):
-        self.update_printers()
+        if not self.module.testing:
+            self.update_printers()
         return [self.printer_status.serialize()]
     def get_print_jobs(self):
-        self.update_print_jobs()
-        return [m.serialize() for m in self.print_jobs_by_uuid.values()]
+        if not self.module.testing:
+            self.update_print_jobs()
+        return [m.serialize() for m in self.print_jobs]
     def get_materials(self):
         return [m.serialize() for m in self.materials]

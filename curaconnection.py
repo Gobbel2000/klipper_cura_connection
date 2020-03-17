@@ -53,6 +53,7 @@ class CuraConnectionModule(object):
         self.reactor = self.printer.get_reactor()
         self.printer.register_event_handler(
                 "klippy:connect", self.handle_connect)
+        self.printer.register_event_handler("klippy:ready", self.handle_ready)
         self.printer.register_event_handler("klippy:disconnect", self.stop)
         self.printer.register_event_handler("klippy:shutdown", self.stop)
         self.printer.register_event_handler("klippy:exception", self.stop)
@@ -63,7 +64,7 @@ class CuraConnectionModule(object):
             # Log to console in testing mode
             logging.basicConfig(level=logging.DEBUG)
             handler = logging.StreamHandler()
-            formatter = logging.Formatter("%(levelname)s: %(message)s")
+            formatter = logging.Formatter("%(levelname)s: \t%(message)s")
         else:
             with open(LOGFILE, "a") as fp:
                 fp.write("\n=== RESTART ===\n\n")
@@ -73,7 +74,7 @@ class CuraConnectionModule(object):
                     backupCount=3, # up to 4 files total
                     delay=True, # Open file only once needed
                 )
-            formatter = logging.Formatter("%(levelname)s: %(message)s")
+            formatter = logging.Formatter("%(levelname)s: \t%(message)s")
         handler.setFormatter(formatter)
         server_logger.addHandler(handler)
 
@@ -81,6 +82,8 @@ class CuraConnectionModule(object):
         self.filament_manager = self.printer.lookup_object(
                 "filament_manager", None)
         self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
+
+    def handle_ready(self):
         self.start()
 
     def start(self):
@@ -95,6 +98,7 @@ class CuraConnectionModule(object):
 
     def stop(self):
         """This might take a little while, be patient"""
+        klippy_logger.debug("Cura Connection shutting down server...")
         self.zeroconf_handler.stop()
         self.server.shutdown()
         self.server_thread.join()
@@ -104,6 +108,7 @@ class CuraConnectionModule(object):
         """Start a print in klipper"""
         if self.testing:
             klippy_logger.info("Start printing {}".format(filename))
+            self.content_manager.add_test_print(filename)
             return
         path = os.path.join(self.SDCARD_PATH, filename)
         self.reactor.register_async_callback(

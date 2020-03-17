@@ -11,11 +11,50 @@ set as name in the zeroconf property dictionary.
 Device refers to detected, usable printers, Machine refers
 to printers added in Cura.
 
+### Great Developer Blogs
+
+1) [GCode](https://community.ultimaker.com/topic/15555-inside-the-ultimaker-3-day-1-gcode/)
+2) [Remote access (part 1)](https://community.ultimaker.com/topic/15574-inside-the-ultimaker-3-day-2-remote-access-part-1/)
+3) [Remote access (part 2)](https://community.ultimaker.com/topic/15604-inside-the-ultimaker-3-day-3-remote-access-part-2/)
+4) [Electronics](https://community.ultimaker.com/topic/15649-inside-the-ultimaker-3-day-4-electronics/)
+5) [Developer mode & Linux/Systemd](https://community.ultimaker.com/topic/15664-inside-the-ultimaker-3-day-5-developer-mode-linuxsystemd/)
+6) [Active leveling](https://community.ultimaker.com/topic/15687-inside-the-ultimaker-3-day-6-active-leveling/)
+
+### Printer
+
+Status strings as of DevBlog2:
+
+* **idle**
+* **printing**
+* **error**
+* **maintenance**
+* **booting**
+
+### Print Jobs
+
+* assigned\_to != None to be "active"
+* setPrintJobState sends one of "print", "pause", "abort"
+* timeTotal is a continuously updated estimate
+* All status strings as of
+    `KlipperNetworkPrinting/resources/qml/MonitorPrintJobProgressBar.qml`
+    and DevBlog2 (indicaded by #)
+    * **wait_cleanup** stopped (aborted or finished)
+    * **finished**
+    * **sent_to_printer**
+    * **pre_print** Active leveling?, Heating #
+    * **aborting** Unused by Cura Connect, used by Cura
+    * **aborted** see above
+    * **pausing** #
+    * **paused** #
+    * **resuming** #
+    * **queued** needed to show in Cura queue
+    * **printing** #
+    * **post_print** Cooling down, stopping #
+
 
 ## TODO
 
-* Try to make **queues** show in Cura
-* Full integration with **Klipper** and updating data
+* Fix that current print job disappears in Cura with a Queue
 * Handle all possible **requests** in HTTP Server (see table)
 * Figure out if it is really necessary to disguise as an Ultimaker3  
     Otherwise custom sizes will need to be set manually.
@@ -25,7 +64,7 @@ to printers added in Cura.
 
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
-    Possibly use _ufp_?
+    Possibly use _ufp_ or _gcode.gz_?
 * Video stream?
 
 

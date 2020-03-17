@@ -47,6 +47,11 @@ class Handler(srv.BaseHTTPRequestHandler):
                         break
                     self.wfile.write(chunk)
             return
+        elif self.path == "/print_jobs":
+            self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+            self.send_header("Location", "https://youtu.be/dQw4w9WgXcQ")
+            self.end_headers()
+            return
         else:
             # NOTE: send_error() calls end_headers()
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -88,7 +93,7 @@ class Handler(srv.BaseHTTPRequestHandler):
                     fname = msg.get_filename()
                 elif name == "owner":
                     owner = msg.get_payload().strip()
-            self.content_manager.add_print_job(fname, owner=owner)
+            self.module.send_print(fname)
             self.send_response(HTTPStatus.NO_CONTENT)
             self.end_headers()
 
@@ -108,14 +113,14 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def log_error(self, format, *args):
         """Similar to log_message, but log under loglevel ERROR"""
-        message = ("\t%s - - [%s] %s" %
+        message = ("%s - - [%s] %s" %
                 (self.address_string(),
                  self.log_date_time_string(),
                  format%args))
         logger.error(message)
 
     def log_message(self, format, *args):
-        message = ("\t%s - - [%s] %s" %
+        message = ("%s - - [%s] %s" %
                 (self.address_string(),
                  self.log_date_time_string(),
                  format%args))
