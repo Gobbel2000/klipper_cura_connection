@@ -66,12 +66,12 @@ class ContentManager(object):
         )
         self.materials.append(new_material)
 
-    def get_print_job_status(self, filename):
+    def get_print_job_status(self, path):
         return ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=False,
             machine_variant="Ultimaker 3",
-            name=filename,
+            name=os.path.basename(path),
             started=False,
             # One of: wait_cleanup, finished, sent_to_printer, pre_print,
             # pausing, paused, resuming, queued, printing, post_print
@@ -86,12 +86,12 @@ class ContentManager(object):
             printer_uuid=self.printer_status.uuid,
         )
 
-    def add_test_print(self, filename):
+    def add_test_print(self, path):
         """
         Testing only: add a print job outside of klipper and pretend
         we're printing.
         """
-        self.print_jobs.append(self.get_print_job_status(filename))
+        self.print_jobs.append(self.get_print_job_status(path))
         self.print_jobs[0].status = "printing"
         self.print_jobs[0].started = True
         self.print_jobs[0].time_total = 10000
@@ -101,8 +101,7 @@ class ContentManager(object):
 
     def update_printers(self):
         """Update currently loaded material (TODO) and state"""
-        state = self.module.sdcard.get_status(
-                self.module.reactor.monotonic())["state"]
+        state = self.module.sdcard.get_status()["state"]
         if state in {"printing", "paused"}:
             self.printer_status.status = "printing"
         else:
@@ -114,14 +113,15 @@ class ContentManager(object):
 
         # Update self.print_jobs with the queue
         new_print_jobs = []
-        for i, fname in enumerate(s["queued_files"]):
+        for i, path in enumerate(s["queued_files"]):
             print_job = None
+            fname = os.path.basename(path)
             for j, pj in enumerate(self.print_jobs):
                 if pj.name == fname:
                     print_job = self.print_jobs.pop(j)
                     break
             if print_job is None: # Newly add print job
-                new_print_jobs.append(self.get_print_job_status(fname))
+                new_print_jobs.append(self.get_print_job_status(path))
             else:
                 new_print_jobs.append(print_job)
         self.print_jobs = new_print_jobs
@@ -130,9 +130,10 @@ class ContentManager(object):
             elapsed = self.module.sdcard.get_printed_time()
             self.print_jobs[0].time_elapsed = int(elapsed)
             if s["estimated_remaining_time"] is None:
-                self.print_jobs[0].time_total = int(elapsed + 10000)
+                self.print_jobs[0].time_total = int(elapsed + 10000) #FIXME
             else:
-                self.print_jobs[0].time_total = int(s["estimated_remaining_time"] + elapsed)
+                self.print_jobs[0].time_total = int(
+                        s["estimated_remaining_time"] + elapsed)
 
             if s["state"] in {"printing", "paused"}: # Should cover all cases
                 self.print_jobs[0].status = s["state"]

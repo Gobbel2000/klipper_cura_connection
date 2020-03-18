@@ -102,19 +102,17 @@ class CuraConnectionModule(object):
         """This might take a little while, be patient"""
         klippy_logger.debug("Cura Connection shutting down server...")
         self.zeroconf_handler.stop()
-        klippy_logger.debug("Zeroconf finished shutting down")
         self.server.shutdown()
-        klippy_logger.debug("Server finished shutting down")
         self.server_thread.join()
         klippy_logger.debug("Cura Connection Server shut down")
 
     def send_print(self, filename):
         """Start a print in klipper"""
+        path = os.path.join(self.SDCARD_PATH, filename)
         if self.testing:
             klippy_logger.info("Start printing {}".format(filename))
-            self.content_manager.add_test_print(filename)
+            self.content_manager.add_test_print(path)
             return
-        path = os.path.join(self.SDCARD_PATH, filename)
         self.reactor.register_async_callback(
                 lambda e: self.sdcard.add_printjob(path))
 
