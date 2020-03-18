@@ -40,7 +40,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.end_headers()
             chunksize = 1024**2 # 1 MiB
-            with open("tux.png", "rb") as fp:
+            with open(os.path.join(self.module.PATH, "tux.png"), "rb") as fp:
                 while True:
                     chunk = fp.read(chunksize)
                     if chunk == "":

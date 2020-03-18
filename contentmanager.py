@@ -110,8 +110,7 @@ class ContentManager(object):
 
     def update_print_jobs(self):
         """Read queue, Update status, elapsed time"""
-        s = self.module.sdcard.get_status(
-                self.module.reactor.monotonic())
+        s = self.module.sdcard.get_status()
 
         # Update self.print_jobs with the queue
         new_print_jobs = []
@@ -128,11 +127,13 @@ class ContentManager(object):
         self.print_jobs = new_print_jobs
 
         if self.print_jobs: # Update first print job if there is one
-            elapsed = self.module.sdcard.get_printed_time(
-                    self.module.reactor.monotonic())
-            self.print_jobs[0].time_elapsed = elapsed
-            self.print_jobs[0].time_total = (
-                    s["estimated_remaining_time"] + elapsed)
+            elapsed = self.module.sdcard.get_printed_time()
+            self.print_jobs[0].time_elapsed = int(elapsed)
+            if s["estimated_remaining_time"] is None:
+                self.print_jobs[0].time_total = int(elapsed + 10000)
+            else:
+                self.print_jobs[0].time_total = int(s["estimated_remaining_time"] + elapsed)
+
             if s["state"] in {"printing", "paused"}: # Should cover all cases
                 self.print_jobs[0].status = s["state"]
             if s["state"] == "printing":

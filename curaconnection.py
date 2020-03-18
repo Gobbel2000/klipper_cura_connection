@@ -17,7 +17,6 @@ from contentmanager import ContentManager
 import server
 from zeroconfhandler import ZeroConfHandler
 
-LOGFILE = "logs/server.log"
 klippy_logger = logging.getLogger()
 assert(klippy_logger.name == "root")
 server_logger = logging.getLogger("root.server") # Inherits level
@@ -28,7 +27,6 @@ class CuraConnectionModule(object):
 
     def __init__(self, config):
         self.testing = config is None
-        self.configure_logging()
         klippy_logger.info("Cura Connection Module initializing...")
 
         # Global variables
@@ -36,6 +34,10 @@ class CuraConnectionModule(object):
         self.ADDRESS = self.get_ip()
         self.SDCARD_PATH = os.path.expanduser("~/sdcard")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
+        self.PATH = os.path.dirname(os.path.realpath(__file__))
+        self.LOGFILE = os.path.join(self.PATH, "logs/server.log")
+
+        self.configure_logging()
 
         self.content_manager = ContentManager(self)
         self.zeroconf_handler = ZeroConfHandler(self.ADDRESS)
@@ -66,10 +68,10 @@ class CuraConnectionModule(object):
             handler = logging.StreamHandler()
             formatter = logging.Formatter("%(levelname)s: \t%(message)s")
         else:
-            with open(LOGFILE, "a") as fp:
+            with open(self.LOGFILE, "a") as fp:
                 fp.write("\n=== RESTART ===\n\n")
             handler = logging.handlers.RotatingFileHandler(
-                    filename=LOGFILE,
+                    filename=self.LOGFILE,
                     maxBytes=4194304, # max 4 MiB per file
                     backupCount=3, # up to 4 files total
                     delay=True, # Open file only once needed
@@ -96,11 +98,13 @@ class CuraConnectionModule(object):
         self.server_thread.start()
         klippy_logger.debug("Cura Connection Server started")
 
-    def stop(self):
+    def stop(self, *args):
         """This might take a little while, be patient"""
         klippy_logger.debug("Cura Connection shutting down server...")
         self.zeroconf_handler.stop()
+        klippy_logger.debug("Zeroconf finished shutting down")
         self.server.shutdown()
+        klippy_logger.debug("Server finished shutting down")
         self.server_thread.join()
         klippy_logger.debug("Cura Connection Server shut down")
 
@@ -132,7 +136,6 @@ class CuraConnectionModule(object):
 def load_config(config):
     """Entry point, called by Klippy"""
     module = CuraConnectionModule(config)
-    module.start()
     return module
 
 if __name__ == "__main__":

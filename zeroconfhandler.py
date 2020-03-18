@@ -27,7 +27,7 @@ class ZeroConfHandler(object):
 
     def start(self):
         """Start the zeroconf service"""
-        self.zeroconf.register_service(self.info)
+        self.zeroconf.register_service(self.info, allow_name_change=True)
 
     def stop(self):
         """Stop the zeroconf service"""
