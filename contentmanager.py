@@ -82,8 +82,8 @@ class ContentManager(object):
             uuid=self.new_uuid(),
             configuration=[{"extruder_index": 0}],
             constraints=[],
-            assigned_to=self.printer_status.unique_name,
-            printer_uuid=self.printer_status.uuid,
+            #assigned_to=self.printer_status.unique_name,
+            #printer_uuid=self.printer_status.uuid,
         )
 
     def add_test_print(self, path):
@@ -96,6 +96,7 @@ class ContentManager(object):
         self.print_jobs[0].started = True
         self.print_jobs[0].time_total = 10000
         self.print_jobs[0].time_elapsed += 2
+        self.print_jobs[0].assigned_to = self.printer_status.uuid
 
         self.printer_status.status = "printing"
 
