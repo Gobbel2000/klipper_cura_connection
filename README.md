@@ -54,11 +54,10 @@ Status strings as of DevBlog2:
 
 ## TODO
 
-* Fix that current print job disappears in Cura with a Queue
 * Handle all possible **requests** in HTTP Server (see table)
 * Figure out if it is really necessary to disguise as an Ultimaker3  
     Otherwise custom sizes will need to be set manually.
-* Figure out a way to determine a unique printer **name** (hostname?)
+* Figure out a way to determine a unique (and a friendly) printer **name** (hostname?)
 
 ### Would also be nice
 

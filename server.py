@@ -6,6 +6,7 @@ import BaseHTTPServer as srv
 import json
 import logging
 import os.path
+import re
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
@@ -36,25 +37,26 @@ class Handler(srv.BaseHTTPRequestHandler):
             content = self.content_manager.get_print_jobs()
         elif self.path == CLUSTER_API + "materials":
             content = self.content_manager.get_materials()
-        elif self.path.endswith("preview_image"):
-            self.send_response(HTTPStatus.OK)
-            self.end_headers()
-            chunksize = 1024**2 # 1 MiB
-            with open(os.path.join(self.module.PATH, "tux.png"), "rb") as fp:
-                while True:
-                    chunk = fp.read(chunksize)
-                    if chunk == "":
-                        break
-                    self.wfile.write(chunk)
-            return
         elif self.path == "/print_jobs":
             self.send_response(HTTPStatus.MOVED_PERMANENTLY)
             self.send_header("Location", "https://youtu.be/dQw4w9WgXcQ")
             self.end_headers()
             return
         else:
-            # NOTE: send_error() calls end_headers()
-            self.send_error(HTTPStatus.NOT_FOUND)
+            m = self.handle_uuid_path()
+            if m and m.group("suffix") == "/preview_image":
+                self.send_response(HTTPStatus.OK)
+                self.end_headers()
+                chunksize = 1024**2 # 1 MiB
+                with open(os.path.join(self.module.PATH, "tux.png"), "rb") as fp:
+                    while True:
+                        chunk = fp.read(chunksize)
+                        if chunk == "":
+                            break
+                        self.wfile.write(chunk)
+            else:
+                # NOTE: send_error() calls end_headers()
+                self.send_error(HTTPStatus.NOT_FOUND)
             return
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/json")
@@ -68,13 +70,41 @@ class Handler(srv.BaseHTTPRequestHandler):
             elif self.path == CLUSTER_API + "materials/":
                 self.post_material()
         else:
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+            m = self.handle_uuid_path()
+            if m and m.group("suffix") == "/action/move":
+                self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_PUT(self):
-        self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        m = self.handle_uuid_path()
+        if m and m.group("suffix") == "/action":
+            # pause, print or abort
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        elif m and not m.group("suffix"):
+            # force print job
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        else:
+            self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_DELETE(self):
-        self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        m = self.handle_uuid_path()
+        if m and not m.group("suffix"):
+            # Delete print job from queue
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        else:
+            self.send_error(HTTPStatus.NOT_FOUND)
+
+    def handle_uuid_path(self):
+        """
+        Return the regex match for a path in form:
+        /cluster-api/v1/print_jobs/<UUID>...
+        with the uuid and the suffix (everything past the uuid) in their
+        respective groups.
+        """
+        return re.match(r"^" + CLUSTER_API + "print_jobs/"
+                + r"(?P<uuid>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})"
+                + r"(?P<suffix>.*)$", self.path)
 
 
     def post_print_job(self):

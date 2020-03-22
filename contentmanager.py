@@ -22,7 +22,7 @@ class ContentManager(object):
             # One of: idle, printing, error, maintenance, booting
             status="idle",
             unique_name="super_sayan_printer",
-            uuid=self.new_uuid(),
+            uuid=self.new_uuid(), # Use consistent UUID or not?
             configuration=[{ #TODO update
                 "extruder_index": 0,
                 "material": {
