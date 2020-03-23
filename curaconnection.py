@@ -106,6 +106,7 @@ class CuraConnectionModule(object):
         self.server_thread.join()
         klippy_logger.debug("Cura Connection Server shut down")
 
+
     def send_print(self, filename):
         """Start a print in klipper"""
         path = os.path.join(self.SDCARD_PATH, filename)
@@ -115,6 +116,37 @@ class CuraConnectionModule(object):
             return
         self.reactor.register_async_callback(
                 lambda e: self.sdcard.add_printjob(path))
+
+    def send_queue(self, queue):
+        self.sdcard.clear_queue()
+        for e in queue[1:]:
+            self.sdcard.add_printjob(*e)
+
+    def queue_delete(self, index, filename):
+        """
+        Delete the print job from the queue.
+        The index is checked as well as the filename in order to detect
+        changes in the queue that have not yet been updated in the
+        content manager.  In that case a LookupError is raised.
+        """
+        queue = self.sdcard.queued_files
+        if os.path.basename(queue[index][0]) == filename:
+            queue.pop(index)
+            self.send_queue(queue)
+        else:
+            raise LookupError("Queues are desynchronised")
+
+    def queue_move(self, old_index, new_index=1, filename):
+        if new_index == 0:
+            raise IndexError("Not allowed to move print job to index 0")
+        queue = self.sdcard.queued_files
+        if os.path.basename(queue[old_index][0]) == filename:
+            to_move = queue.pop(old_index)
+            queue.insert(new_index, to_move)
+            self.send_queue(queue)
+        else:
+            raise LookupError("Queues are desynchronised")
+
 
     @staticmethod
     def get_ip():

@@ -82,8 +82,6 @@ class ContentManager(object):
             uuid=self.new_uuid(),
             configuration=[{"extruder_index": 0}],
             constraints=[],
-            #assigned_to=self.printer_status.unique_name,
-            #printer_uuid=self.printer_status.uuid,
         )
 
     def add_test_print(self, path):
@@ -130,6 +128,7 @@ class ContentManager(object):
         if self.print_jobs: # Update first print job if there is one
             elapsed = self.module.sdcard.get_printed_time()
             self.print_jobs[0].time_elapsed = int(elapsed)
+            self.print_jobs[0].assigned_to = self.printer_status.uuid
             if s["estimated_remaining_time"] is None:
                 self.print_jobs[0].time_total = int(elapsed + 10000) #FIXME
             else:
@@ -153,6 +152,14 @@ class ContentManager(object):
         """Returns the current UTC time in a string in ISO8601 format"""
         now = datetime.utcnow()
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    def uuid_to_print_job(self, uuid):
+        """
+        Return a tuple (index, print job) for the print job with the given
+        UUID.  Return (None, None) if the UUID could not be found.
+        """
+        return next(iter((i, pj) for i, pj in enumerate(self.print_jobs)
+            if pj.uuid == uuid), (None, None))
 
     def get_printer_status(self):
         if not self.module.testing:

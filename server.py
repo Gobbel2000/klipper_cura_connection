@@ -72,7 +72,10 @@ class Handler(srv.BaseHTTPRequestHandler):
         else:
             m = self.handle_uuid_path()
             if m and m.group("suffix") == "/action/move":
-                self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+                try:
+                    self.move_to_top(m.group("uuid"))
+                except (ValueError, TypeError, KeyError):
+                    self.send_error(HTTPStatus.BAD_REQUEST)
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -91,7 +94,19 @@ class Handler(srv.BaseHTTPRequestHandler):
         m = self.handle_uuid_path()
         if m and not m.group("suffix"):
             # Delete print job from queue
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+            index, print_job = self.content_manager.uuid_to_print_job(
+                    m.group("uuid"))
+            if print_job:
+                try:
+                    self.module.queue_delete(index, print_job.name)
+                except LookupError:
+                    self.send_error(HTTPStatus.CONFLICT,
+                            "Queues are desynchronised")
+                else:
+                    self.send_responte(HTTPStatus.NO_CONTENT)
+                    self.end_headers()
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -140,6 +155,20 @@ class Handler(srv.BaseHTTPRequestHandler):
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
             self.end_headers()
+
+    def move_to_top(self, uuid):
+        length = int(self.headers.get("Content-Length", 0))
+        rdata = self.rfile.read(length)
+        data = json.loads(rdata)
+        if data["list"] == "queued":
+            new_index = data["to_position"]
+            old_index, print_job = self.content_manager.uuid_to_print_job(uuid)
+            if print_job:
+                self.module.queue_move(old_index, new_index, print_job.name)
+                self.send_response(HTTPStatus.NO_CONTENT)
+                self.end_headers()
+            else:
+                send_error(HTTPStatus.NOT_FOUND)
 
     def log_error(self, format, *args):
         """Similar to log_message, but log under loglevel ERROR"""
