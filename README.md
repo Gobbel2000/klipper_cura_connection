@@ -115,11 +115,11 @@ Most come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
 |getMaterials           |GET    |/materials                     |[ClusterMaterial]              |At startup             |True
 |getPrinters            |GET    |/printers                      |[ClusterPrinterStatus]         |Periodically           |True
 |getPrintJobs           |GET    |/print\_jobs                   |[ClusterPrintJobStatus]        |Periodically           |True
-|setPrintJobState       |PUT    |/print\_jobs/UUID/action       |("pause", "print", "abort")    |                       |False
-|movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |json{"to\_position": 0, "list": "queued"}|             |False
-|forcePrintJob          |PUT    |/print\_jobs/UUID              |json{"force": True}            |                       |False
-|deletePrintJob         |DELETE |/print\_jobs/UUID              |                               |                       |False
-|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG works)       |At job creation        |Temporary
+|setPrintJobState       |PUT    |/print\_jobs/UUID/action       |{action:(pause|print|abort)}   |?                      |False
+|movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |{to\_position:0,list:queued}   |GUI                    |True
+|forcePrintJob          |PUT    |/print\_jobs/UUID              |{force: True}                  |GUI (Override)         |False
+|deletePrintJob         |DELETE |/print\_jobs/UUID              |None                           |GUI                    |True
+|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG file works)  |At job creation        |Temporary
 |startPrintJobUpload    |POST   |/print\_jobs/                  |owner & .gcode file (MIME)     |"Print over Network"   |True
 |sendMaterials          |POST   |/materials/                    |.xml.fdm-material file (MIME)  |Sent if not on printer |True
 |?                      |GET    |!/?action=stream               |?                              |Open stream            |False

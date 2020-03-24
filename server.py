@@ -72,10 +72,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         else:
             m = self.handle_uuid_path()
             if m and m.group("suffix") == "/action/move":
-                try:
-                    self.move_to_top(m.group("uuid"))
-                except (ValueError, TypeError, KeyError):
-                    self.send_error(HTTPStatus.BAD_REQUEST)
+                self.post_move_to_top(m.group("uuid"))
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -83,10 +80,10 @@ class Handler(srv.BaseHTTPRequestHandler):
         m = self.handle_uuid_path()
         if m and m.group("suffix") == "/action":
             # pause, print or abort
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+            self.put_action(m.group("uuid"))
         elif m and not m.group("suffix"):
             # force print job
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+            self.put_force(m.group("uuid"))
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -94,19 +91,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         m = self.handle_uuid_path()
         if m and not m.group("suffix"):
             # Delete print job from queue
-            index, print_job = self.content_manager.uuid_to_print_job(
-                    m.group("uuid"))
-            if print_job:
-                try:
-                    self.module.queue_delete(index, print_job.name)
-                except LookupError:
-                    self.send_error(HTTPStatus.CONFLICT,
-                            "Queues are desynchronised")
-                else:
-                    self.send_responte(HTTPStatus.NO_CONTENT)
-                    self.end_headers()
-            else:
-                self.send_error(HTTPStatus.NOT_FOUND)
+            self.delete_print_job(m.group("uuid"))
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -117,7 +102,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         with the uuid and the suffix (everything past the uuid) in their
         respective groups.
         """
-        return re.match(r"^" + CLUSTER_API + "print_jobs/"
+        return re.match(r"^" + CLUSTER_API + r"print_jobs/"
                 + r"(?P<uuid>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})"
                 + r"(?P<suffix>.*)$", self.path)
 
@@ -129,7 +114,8 @@ class Handler(srv.BaseHTTPRequestHandler):
             parser = MimeParser(self.rfile, boundary, length,
                 self.module.SDCARD_PATH, overwrite=False)
             submessages = parser.parse()
-        except:
+        except Exception as e:
+            logger.error("Parser failed: " + str(e))
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
         else:
             for msg in submessages:
@@ -149,26 +135,93 @@ class Handler(srv.BaseHTTPRequestHandler):
             parser = MimeParser(self.rfile, boundary, length,
                     self.module.MATERIAL_PATH)
             submessages = parser.parse()
-        except:
+        except Exception as e:
+            logger.error("Parser failed: " + str(e))
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
         else:
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
             self.end_headers()
 
-    def move_to_top(self, uuid):
+    def post_move_to_top(self, uuid):
+        """Move print job with uuid to the top of the queue"""
         length = int(self.headers.get("Content-Length", 0))
         rdata = self.rfile.read(length)
-        data = json.loads(rdata)
-        if data["list"] == "queued":
-            new_index = data["to_position"]
-            old_index, print_job = self.content_manager.uuid_to_print_job(uuid)
-            if print_job:
+        try:
+            data = json.loads(rdata)
+        except ValueError:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return
+        old_index, print_job = self.content_manager.uuid_to_print_job(uuid)
+        new_index = data.get("to_position")
+        if not print_job:
+            self.send_error(HTTPStatus.NOT_FOUND)
+        elif data.get("list") != "queued" or not isinstance(new_index, int):
+            self.send_error(HTTPStatus.BAD_REQUEST)
+        else:
+            try:
                 self.module.queue_move(old_index, new_index, print_job.name)
+            except IndexError:
+                self.send_error(HTTPStatus.BAD_REQUEST)
+            except AttributeError:
+                self.send_error(HTTPStatus.CONFLICT)
+            else:
                 self.send_response(HTTPStatus.NO_CONTENT)
                 self.end_headers()
+
+    def delete_print_job(self, uuid):
+        """Delete print job with uuid from the queue"""
+        index, print_job = self.content_manager.uuid_to_print_job(uuid)
+        if not print_job:
+            self.send_error(HTTPStatus.NOT_FOUND)
+        else:
+            try:
+                self.module.queue_delete(index, print_job.name)
+            except AttributeError:
+                self.send_error(HTTPStatus.CONFLICT)
             else:
-                send_error(HTTPStatus.NOT_FOUND)
+                self.send_response(HTTPStatus.NO_CONTENT)
+                self.end_headers()
+
+    def put_action(self, uuid):
+        """Pause, Print or Abort a print job"""
+        length = int(self.headers.get("Content-Length", 0))
+        rdata = self.rfile.read(length)
+        try:
+            data = json.loads(rdata)
+        except ValueError:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return
+        index, print_job = self.content_manager.uuid_to_print_job(uuid)
+        action = data.get("action")
+        if not print_job:
+            self.send_error(HTTPStatus.NOT_FOUND)
+        elif action == "print":
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        elif action == "pause":
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        elif action == "abort":
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+        else:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+
+    def put_force(self, uuid):
+        """Force a print job"""
+        length = int(self.headers.get("Content-Length", 0))
+        rdata = self.rfile.read(length)
+        try:
+            data = json.loads(rdata)
+        except ValueError:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return
+        index, print_job = self.content_manager.uuid_to_print_job(uuid)
+        if not print_job:
+            self.send_error(HTTPStatus.NOT_FOUND)
+        elif data.get("force") is not True:
+            self.send_error(HTTPStatus.BAD_REQUEST)
+        else:
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+
 
     def log_error(self, format, *args):
         """Similar to log_message, but log under loglevel ERROR"""
@@ -199,9 +252,9 @@ class MimeParser(object):
     MIME message, converting the parts to email.Message objects.
     If a part contains a file it is not added as a payload to that
     Message object but instead directly written to the directory
-    specified by RECEIVE_DIR.
-    If the file already exists, it will be renamed (see _unique_path()
-    for details).
+    specified by out_dir.
+    If the file already exists and overwrite is set to False, it will
+    be renamed (see _unique_path() for details).
 
     Arguments:
     fp          The file pointer to parse from

@@ -86,6 +86,7 @@ class CuraConnectionModule(object):
         self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
 
     def handle_ready(self):
+        """Start the server only once Klipper is all up and running"""
         self.start()
 
     def start(self):
@@ -119,8 +120,9 @@ class CuraConnectionModule(object):
 
     def send_queue(self, queue):
         self.sdcard.clear_queue()
-        for e in queue[1:]:
-            self.sdcard.add_printjob(*e)
+        for q in queue[1:]:
+            self.reactor.register_async_callback(
+                    lambda e: self.sdcard.add_printjob(*q))
 
     def queue_delete(self, index, filename):
         """
@@ -134,18 +136,18 @@ class CuraConnectionModule(object):
             queue.pop(index)
             self.send_queue(queue)
         else:
-            raise LookupError("Queues are desynchronised")
+            raise AttributeError("Queues are desynchronised")
 
-    def queue_move(self, old_index, new_index=1, filename):
-        if new_index == 0:
-            raise IndexError("Not allowed to move print job to index 0")
+    def queue_move(self, old_index, new_index, filename):
         queue = self.sdcard.queued_files
-        if os.path.basename(queue[old_index][0]) == filename:
-            to_move = queue.pop(old_index)
-            queue.insert(new_index, to_move)
-            self.send_queue(queue)
-        else:
-            raise LookupError("Queues are desynchronised")
+        if not (0 < new_index < len(queue)):
+            raise IndexError(
+                "Can't move print job to index {}".format(new_index))
+        if os.path.basename(queue[old_index][0]) != filename:
+            raise AttributeError("Queues are desynchronised")
+        to_move = queue.pop(old_index)
+        queue.insert(new_index, to_move)
+        self.send_queue(queue)
 
 
     @staticmethod
