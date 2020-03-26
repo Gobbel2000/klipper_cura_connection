@@ -20,6 +20,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         """This is the worst thing ever but it somehow works"""
         self.module = server.module
         self.content_manager = self.module.content_manager
+        self._size = None # For logging GET requests
         srv.BaseHTTPRequestHandler.__init__(
                 self, request, client_address, server)
 
@@ -101,19 +102,19 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR,
                     "JSON serialization failed")
         else:
-            self.send_response(HTTPStatus.OK)
+            self.send_response(HTTPStatus.OK, size=len(json_content))
             self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(json_content)))
             self.end_headers()
             self.wfile.write(json_content)
 
     def get_preview_image(self, uuid):
         """Send back the preview image for the print job with uuid"""
         #TODO actual image?
-        self.send_response(HTTPStatus.OK)
+        path = os.path.join(self.module.PATH, "tux.png")
+        self.send_response(HTTPStatus.OK, size=os.path.getsize(path))
         self.end_headers()
         chunksize = 1024**2 # 1 MiB
-        with open(os.path.join(self.module.PATH, "tux.png"), "rb") as fp:
+        with open(path, "rb") as fp:
             while True:
                 chunk = fp.read(chunksize)
                 if chunk == "":
@@ -254,18 +255,37 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_IMPLEMENTED)
 
 
+    def send_response(self, code, message=None, size=None):
+        """
+        Accept size as an argument (can be int) which sends the
+        Content-Length header and takes care of logging the size as well.
+        """
+        if size is not None:
+            self._size = str(size)
+        srv.BaseHTTPRequestHandler.send_response(self, code, message)
+        if self._size is not None:
+            self.send_header("Content-Length", self._size)
+            self._size = None
+
+
+    def log_request(self, code="-", size="-"):
+        """Add size to logging"""
+        s = self._size + "B" if self._size is not None else size
+        srv.BaseHTTPRequestHandler.log_request(self, code, s)
+
     def log_error(self, format, *args):
         """Similar to log_message, but log under loglevel ERROR"""
         # Overwrite format string. Default is "code %d, message %s"
-        format = "Errorcode %d: %s"
-        message = ("%s - - [%s] %s" %
+        if format == "code %d, message %s":
+            format = "Errorcode %d: %s"
+        message = ("%s - [%s] %s" %
                 (self.address_string(),
                  self.log_date_time_string(),
                  format%args))
         logger.error(message)
 
     def log_message(self, format, *args):
-        message = ("%s - - [%s] %s" %
+        message = ("%s - [%s] %s" %
                 (self.address_string(),
                  self.log_date_time_string(),
                  format%args))

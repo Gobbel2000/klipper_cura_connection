@@ -60,7 +60,6 @@ Status strings as of DevBlog2:
 
 ### Would also be nice
 
-* Handle all possible **requests** in HTTP Server (see table)
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
     Possibly use _ufp_ or _gcode.gz_?
