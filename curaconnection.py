@@ -118,6 +118,18 @@ class CuraConnectionModule(object):
         self.reactor.register_async_callback(
                 lambda e: self.sdcard.add_printjob(path))
 
+    def resume_print(self, filename):
+        self._verify_queue(0, filename)
+        self.reactor.register_async_callback(self.sdcard.resume_printjob)
+
+    def pause_print(self, filename):
+        self._verify_queue(0, filename)
+        self.reactor.register_async_callback(self.sdcard.pause_printjob)
+
+    def stop_print(self, filename):
+        self._verify_queue(0, filename)
+        self.reactor.register_async_callback(self.sdcard.stop_printjob)
+
     def send_queue(self, queue):
         self.sdcard.clear_queue()
         for q in queue[1:]:
@@ -131,23 +143,26 @@ class CuraConnectionModule(object):
         changes in the queue that have not yet been updated in the
         content manager.  In that case a LookupError is raised.
         """
+        self._verify_queue(index, filename)
         queue = self.sdcard.queued_files
-        if os.path.basename(queue[index][0]) == filename:
-            queue.pop(index)
-            self.send_queue(queue)
-        else:
-            raise AttributeError("Queues are desynchronised")
+        queue.pop(index)
+        self.send_queue(queue)
 
     def queue_move(self, old_index, new_index, filename):
+        self._verify_queue(old_index, filename)
         queue = self.sdcard.queued_files
         if not (0 < new_index < len(queue)):
             raise IndexError(
                 "Can't move print job to index {}".format(new_index))
-        if os.path.basename(queue[old_index][0]) != filename:
-            raise AttributeError("Queues are desynchronised")
         to_move = queue.pop(old_index)
         queue.insert(new_index, to_move)
         self.send_queue(queue)
+
+    def _verify_queue(self, index, filename):
+        """Raise AttributeError if filename is not at index in queue"""
+        queue = self.sdcard.queued_files
+        if os.path.basename(queue[index][0]) != filename:
+            raise AttributeError("Queues are desynchronised")
 
 
     @staticmethod

@@ -30,38 +30,24 @@ class Handler(srv.BaseHTTPRequestHandler):
         README.md
         """
         if self.path == PRINTER_API + "system":
-            content = self.content_manager.get_system()
+            self.get_json(self.content_manager.get_system())
         elif self.path == CLUSTER_API + "printers":
-            content = self.content_manager.get_printer_status()
+            self.get_json(self.content_manager.get_printer_status())
         elif self.path == CLUSTER_API + "print_jobs":
-            content = self.content_manager.get_print_jobs()
+            self.get_json(self.content_manager.get_print_jobs())
         elif self.path == CLUSTER_API + "materials":
-            content = self.content_manager.get_materials()
+            self.get_json(self.content_manager.get_materials())
         elif self.path == "/print_jobs":
             self.send_response(HTTPStatus.MOVED_PERMANENTLY)
             self.send_header("Location", "https://youtu.be/dQw4w9WgXcQ")
             self.end_headers()
-            return
         else:
             m = self.handle_uuid_path()
             if m and m.group("suffix") == "/preview_image":
-                self.send_response(HTTPStatus.OK)
-                self.end_headers()
-                chunksize = 1024**2 # 1 MiB
-                with open(os.path.join(self.module.PATH, "tux.png"), "rb") as fp:
-                    while True:
-                        chunk = fp.read(chunksize)
-                        if chunk == "":
-                            break
-                        self.wfile.write(chunk)
+                self.get_preview_image(m.group("uuid"))
             else:
                 # NOTE: send_error() calls end_headers()
                 self.send_error(HTTPStatus.NOT_FOUND)
-            return
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        json.dump(content, self.wfile)
 
     def do_POST(self):
         if self.headers.getmaintype() == "multipart":
@@ -107,6 +93,33 @@ class Handler(srv.BaseHTTPRequestHandler):
                 + r"(?P<suffix>.*)$", self.path)
 
 
+    def get_json(self, content):
+        """Send an object JSON-formatted"""
+        try:
+            json_content = json.dumps(content)
+        except TypeError:
+            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR,
+                    "JSON serialization failed")
+        else:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(json_content)))
+            self.end_headers()
+            self.wfile.write(json_content)
+
+    def get_preview_image(self, uuid):
+        """Send back the preview image for the print job with uuid"""
+        #TODO actual image?
+        self.send_response(HTTPStatus.OK)
+        self.end_headers()
+        chunksize = 1024**2 # 1 MiB
+        with open(os.path.join(self.module.PATH, "tux.png"), "rb") as fp:
+            while True:
+                chunk = fp.read(chunksize)
+                if chunk == "":
+                    break
+                self.wfile.write(chunk)
+
     def post_print_job(self):
         boundary = self.headers.getparam("boundary")
         length = int(self.headers.get("Content-Length", 0))
@@ -115,8 +128,8 @@ class Handler(srv.BaseHTTPRequestHandler):
                 self.module.SDCARD_PATH, overwrite=False)
             submessages = parser.parse()
         except Exception as e:
-            logger.error("Parser failed: " + str(e))
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
+                    "Parser failed: " + str(e))
         else:
             for msg in submessages:
                 name = msg.get_param("name", header="Content-Disposition")
@@ -136,8 +149,8 @@ class Handler(srv.BaseHTTPRequestHandler):
                     self.module.MATERIAL_PATH)
             submessages = parser.parse()
         except Exception as e:
-            logger.error("Parser failed: " + str(e))
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
+                    "Parser failed: " + str(e))
         else:
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
@@ -150,21 +163,22 @@ class Handler(srv.BaseHTTPRequestHandler):
         try:
             data = json.loads(rdata)
         except ValueError:
-            self.send_error(HTTPStatus.BAD_REQUEST)
+            self.send_error(HTTPStatus.BAD_REQUEST, "Failed to read JSON")
             return
         old_index, print_job = self.content_manager.uuid_to_print_job(uuid)
         new_index = data.get("to_position")
         if not print_job:
-            self.send_error(HTTPStatus.NOT_FOUND)
+            self.send_error(HTTPStatus.NOT_FOUND, "Print job not in Queue")
         elif data.get("list") != "queued" or not isinstance(new_index, int):
-            self.send_error(HTTPStatus.BAD_REQUEST)
+            self.send_error(HTTPStatus.BAD_REQUEST,
+                    "Unexpected JSON content: " + rdata)
         else:
             try:
                 self.module.queue_move(old_index, new_index, print_job.name)
-            except IndexError:
-                self.send_error(HTTPStatus.BAD_REQUEST)
+            except IndexError as e:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(e))
             except AttributeError:
-                self.send_error(HTTPStatus.CONFLICT)
+                self.send_error(HTTPStatus.CONFLICT, "Queue order has changed")
             else:
                 self.send_response(HTTPStatus.NO_CONTENT)
                 self.end_headers()
@@ -173,58 +187,77 @@ class Handler(srv.BaseHTTPRequestHandler):
         """Delete print job with uuid from the queue"""
         index, print_job = self.content_manager.uuid_to_print_job(uuid)
         if not print_job:
-            self.send_error(HTTPStatus.NOT_FOUND)
+            self.send_error(HTTPStatus.NOT_FOUND, "Print job not in queue")
         else:
             try:
                 self.module.queue_delete(index, print_job.name)
             except AttributeError:
-                self.send_error(HTTPStatus.CONFLICT)
+                self.send_error(HTTPStatus.CONFLICT, "Queue order has changed")
             else:
                 self.send_response(HTTPStatus.NO_CONTENT)
                 self.end_headers()
 
     def put_action(self, uuid):
-        """Pause, Print or Abort a print job"""
+        """
+        Pause, Print or Abort a print job.
+        This is only called for the current print job.
+        """
         length = int(self.headers.get("Content-Length", 0))
         rdata = self.rfile.read(length)
         try:
             data = json.loads(rdata)
         except ValueError:
-            self.send_error(HTTPStatus.BAD_REQUEST)
+            self.send_error(HTTPStatus.BAD_REQUEST, "Failed to read JSON")
             return
         index, print_job = self.content_manager.uuid_to_print_job(uuid)
         action = data.get("action")
         if not print_job:
-            self.send_error(HTTPStatus.NOT_FOUND)
-        elif action == "print":
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
-        elif action == "pause":
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
-        elif action == "abort":
-            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
+            self.send_error(HTTPStatus.NOT_FOUND, "Print job not in Queue")
+        elif index != 0: # This request is only handled for the current print
+            self.send_error(HTTPStatus.BAD_REQUEST,
+                    "Can only operate on current print job. Got " + str(index))
         else:
-            self.send_error(HTTPStatus.BAD_REQUEST)
+            try:
+                if action == "print":
+                    self.module.resume_print(print_job.name)
+                elif action == "pause":
+                    self.module.pause_print(print_job.name)
+                elif action == "abort":
+                    self.module.stop_print(print_job.name)
+                else:
+                    self.send_error(HTTPStatus.BAD_REQUEST,
+                            "Unknown action: " + str(action))
+            except AttributeError:
+                self.send_error(HTTPStatus.CONFLICT,
+                        "Queue order has changed")
 
     def put_force(self, uuid):
-        """Force a print job"""
+        """
+        Force a print job that requires configuration change
+        This is not called until possibly configration changes are
+        implemented.
+        """
         length = int(self.headers.get("Content-Length", 0))
         rdata = self.rfile.read(length)
         try:
             data = json.loads(rdata)
         except ValueError:
-            self.send_error(HTTPStatus.BAD_REQUEST)
+            self.send_error(HTTPStatus.BAD_REQUEST, "Failed to read JSON")
             return
         index, print_job = self.content_manager.uuid_to_print_job(uuid)
         if not print_job:
-            self.send_error(HTTPStatus.NOT_FOUND)
+            self.send_error(HTTPStatus.NOT_FOUND, "Print job not in Queue")
         elif data.get("force") is not True:
-            self.send_error(HTTPStatus.BAD_REQUEST)
+            self.send_error(HTTPStatus.BAD_REQUEST,
+                    'Expected {"force": True}. Got: ' + rdata)
         else:
             self.send_error(HTTPStatus.NOT_IMPLEMENTED)
 
 
     def log_error(self, format, *args):
         """Similar to log_message, but log under loglevel ERROR"""
+        # Overwrite format string. Default is "code %d, message %s"
+        format = "Errorcode %d: %s"
         message = ("%s - - [%s] %s" %
                 (self.address_string(),
                  self.log_date_time_string(),

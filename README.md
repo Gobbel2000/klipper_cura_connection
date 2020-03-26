@@ -54,13 +54,13 @@ Status strings as of DevBlog2:
 
 ## TODO
 
-* Handle all possible **requests** in HTTP Server (see table)
 * Figure out if it is really necessary to disguise as an Ultimaker3  
     Otherwise custom sizes will need to be set manually.
 * Figure out a way to determine a unique (and a friendly) printer **name** (hostname?)
 
 ### Would also be nice
 
+* Handle all possible **requests** in HTTP Server (see table)
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
     Possibly use _ufp_ or _gcode.gz_?
@@ -115,9 +115,9 @@ Most come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
 |getMaterials           |GET    |/materials                     |[ClusterMaterial]              |At startup             |True
 |getPrinters            |GET    |/printers                      |[ClusterPrinterStatus]         |Periodically           |True
 |getPrintJobs           |GET    |/print\_jobs                   |[ClusterPrintJobStatus]        |Periodically           |True
-|setPrintJobState       |PUT    |/print\_jobs/UUID/action       |{action:(pause|print|abort)}   |?                      |False
+|setPrintJobState       |PUT    |/print\_jobs/UUID/action       |{action:(pause\|print\|abort)} |?                      |True
 |movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |{to\_position:0,list:queued}   |GUI                    |True
-|forcePrintJob          |PUT    |/print\_jobs/UUID              |{force: True}                  |GUI (Override)         |False
+|forcePrintJob          |PUT    |/print\_jobs/UUID              |{force:True}                   |GUI (Override)         |True
 |deletePrintJob         |DELETE |/print\_jobs/UUID              |None                           |GUI                    |True
 |getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG file works)  |At job creation        |Temporary
 |startPrintJobUpload    |POST   |/print\_jobs/                  |owner & .gcode file (MIME)     |"Print over Network"   |True
