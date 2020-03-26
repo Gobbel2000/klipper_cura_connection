@@ -7,6 +7,7 @@ import json
 import logging
 import os.path
 import re
+import threading
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
@@ -476,11 +477,14 @@ class MimeParser(object):
         return path
 
 
-class Server(srv.HTTPServer):
-    """Wrapper class to store the module in the server"""
+class Server(srv.HTTPServer, threading.Thread):
+    """Wrapper class to store the module in the server and add threading"""
     def __init__(self, server_address, RequestHandler, module):
         srv.HTTPServer.__init__(self, server_address, RequestHandler)
+        threading.Thread.__init__(self)
         self.module = module
+
+    run = srv.HTTPServer.serve_forever
 
 
 def get_server(module):

@@ -11,7 +11,6 @@ import logging
 import logging.handlers
 import os
 import socket
-from threading import Thread
 
 from contentmanager import ContentManager
 import server
@@ -93,10 +92,7 @@ class CuraConnectionModule(object):
         """Start the zeroconf service and the server in a seperate thread"""
         self.zeroconf_handler.start() # Non-blocking
         klippy_logger.debug("Cura Connection Zeroconf service started")
-        self.server_thread = Thread(
-            target=self.server.serve_forever,
-            name="Cura_Connection_Server")
-        self.server_thread.start()
+        self.server.start() # Starts server thread
         klippy_logger.debug("Cura Connection Server started")
 
     def stop(self, *args):
@@ -104,7 +100,7 @@ class CuraConnectionModule(object):
         klippy_logger.debug("Cura Connection shutting down server...")
         self.zeroconf_handler.stop()
         self.server.shutdown()
-        self.server_thread.join()
+        self.server.join()
         klippy_logger.debug("Cura Connection Server shut down")
 
 
