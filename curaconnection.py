@@ -90,6 +90,7 @@ class CuraConnectionModule(object):
 
     def start(self):
         """Start the zeroconf service and the server in a seperate thread"""
+        self.content_manager.start()
         self.zeroconf_handler.start() # Non-blocking
         klippy_logger.debug("Cura Connection Zeroconf service started")
         self.server.start() # Starts server thread
@@ -104,11 +105,10 @@ class CuraConnectionModule(object):
         klippy_logger.debug("Cura Connection Server shut down")
 
 
-    def send_print(self, filename):
+    def send_print(self, path):
         """Start a print in klipper"""
-        path = os.path.join(self.SDCARD_PATH, filename)
         if self.testing:
-            klippy_logger.info("Start printing {}".format(filename))
+            klippy_logger.info("Start printing {}".format(path))
             self.content_manager.add_test_print(path)
             return
         self.reactor.register_async_callback(

@@ -128,18 +128,16 @@ class Handler(srv.BaseHTTPRequestHandler):
         try:
             parser = MimeParser(self.rfile, boundary, length,
                 self.module.SDCARD_PATH, overwrite=False)
-            submessages = parser.parse()
+            submessages, paths = parser.parse()
         except Exception as e:
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
                     "Parser failed: " + str(e))
         else:
             for msg in submessages:
                 name = msg.get_param("name", header="Content-Disposition")
-                if name == "file":
-                    fname = msg.get_filename()
-                elif name == "owner":
+                if name == "owner":
                     owner = msg.get_payload().strip()
-            self.module.send_print(fname)
+            self.module.send_print(paths[0])
             self.send_response(HTTPStatus.NO_CONTENT)
             self.end_headers()
 
@@ -149,11 +147,12 @@ class Handler(srv.BaseHTTPRequestHandler):
         try:
             parser = MimeParser(self.rfile, boundary, length,
                     self.module.MATERIAL_PATH)
-            submessages = parser.parse()
+            submessages, paths = parser.parse()
         except Exception as e:
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
                     "Parser failed: " + str(e))
         else:
+            self.module.filament_manager.read_single_file(paths[0])
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
             self.end_headers()
@@ -331,6 +330,7 @@ class MimeParser(object):
         self.out_dir = out_dir
         self.overwrite = overwrite
         self.submessages = []
+        self.written_files = [] # All files that were written
 
         # What we are reading right now. One of:
         # self.HEADERS, self.BODY, self.FILE (0, 1, 2)
@@ -353,7 +353,7 @@ class MimeParser(object):
                 self._parse_line(line)
             except StopIteration:
                 break
-        return self.submessages
+        return self.submessages, self.written_files
 
     def _parse_line(self, line):
         """
@@ -405,6 +405,7 @@ class MimeParser(object):
         occurance of boundary).
         """
         logger.debug("Writing file: {}".format(self.fpath))
+        self.written_files.append(self.fpath)
         buflen = 1024
 
         # Use two buffers in case the boundary gets cut in half

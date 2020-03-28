@@ -4,6 +4,8 @@ import uuid
 import xml.etree.ElementTree as ET
 
 from Models.Http.ClusterMaterial import ClusterMaterial
+from Models.Http.ClusterPrintCoreConfiguration import (
+        ClusterPrintCoreConfiguration)
 from Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
 from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
@@ -23,48 +25,23 @@ class ContentManager(object):
             status="idle",
             unique_name="super_sayan_printer",
             uuid=self.new_uuid(), # Use consistent UUID or not?
-            configuration=[{ #TODO update
-                "extruder_index": 0,
-                "material": {
-                    "brand": "Generic",
-                    "guid": "60636bb4-518f-42e7-8237-fe77b194ebe0",
-                    "color": "#8cb219",
-                    "material": "ABS",
-                    },
-                },
-            ],
+            configuration=[],
         )
-        self.print_jobs = [] # type: [ClusterPrinJobStatus]
+        self.print_jobs = [] # type: [ClusterPrintJobStatus]
         self.materials = [] # type: [ClusterMaterial]
 
-        self.parse_materials()
-
-    def parse_materials(self):
+    def start(self):
         """
-        Read all material files and generate a ClusterMaterial Model.
-        For the model only the GUID and version fields are required.
+        Add to the list of local materials.
+        Must be called later so that filament_manager is available.
         """
-        ns = {"m": "http://www.ultimaker.com/material",
-              "cura": "http://www.ultimaker.com/cura"}
-        for fname in os.listdir(self.module.MATERIAL_PATH):
-            if not fname.endswith(".xml.fdm_material"):
-                continue
-            path = os.path.join(self.module.MATERIAL_PATH, fname)
-            tree = ET.parse(path)
-            root = tree.getroot()
-            metadata = root.find("m:metadata", ns)
-            uuid = metadata.find("m:GUID", ns).text
-            version = int(metadata.find("m:version", ns).text)
-            self.add_material(uuid, version)
-
-    def add_material(self, uuid, version):
-        """Add to the list of local materials"""
-        #TODO: read in filament_manager
-        new_material = ClusterMaterial(
-            guid=uuid,
-            version=version,
-        )
-        self.materials.append(new_material)
+        for guid in self.module.filament_manager.guid_to_path:
+            version = int(self.module.filament_manager.get_material_info(guid,
+                    "./m:metadata/m:version"))
+            self.materials.append(ClusterMaterial(
+                guid=guid,
+                version=version,
+            ))
 
     def get_print_job_status(self, path):
         return ClusterPrintJobStatus(
@@ -80,7 +57,7 @@ class ContentManager(object):
             time_total=0, #TODO set from the beginning
             time_elapsed=0,
             uuid=self.new_uuid(),
-            configuration=[{"extruder_index": 0}],
+            configuration=self.printer_status.configuration, #TODO
             constraints=[],
         )
 
@@ -100,6 +77,29 @@ class ContentManager(object):
 
     def update_printers(self):
         """Update currently loaded material (TODO) and state"""
+        configuration = []
+        fm = self.module.filament_manager
+        loaded_materials = fm.loaded_materials
+        for i, material in enumerate(loaded_materials):
+            if material is None:
+                continue
+            guid = material[0]
+            brand = fm.get_material_info(guid, "./m:metadata/m:name/m:brand")
+            color = fm.get_material_info(guid, "./m:metadata/m:name/m:color")
+            material = fm.get_material_info(guid,
+                    "./m:metadata/m:name/m:material")
+            configuration.append(ClusterPrintCoreConfiguration(
+                extruder_index=i,
+                material={
+                    "guid": guid,
+                    "brand": brand,
+                    "color": color,
+                    "material": material,
+                },
+            ))
+        self.printer_status.configuration = configuration
+        if self.module.testing:
+            return
         state = self.module.sdcard.get_status()["state"]
         if state in {"printing", "paused"}:
             self.printer_status.status = "printing"
@@ -162,8 +162,7 @@ class ContentManager(object):
             if pj.uuid == uuid), (None, None))
 
     def get_printer_status(self):
-        if not self.module.testing:
-            self.update_printers()
+        self.update_printers()
         return [self.printer_status.serialize()]
     def get_print_jobs(self):
         if not self.module.testing:
