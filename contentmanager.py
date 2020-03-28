@@ -44,6 +44,7 @@ class ContentManager(object):
             ))
 
     def get_print_job_status(self, path):
+        """Return a print job model for the given path"""
         return ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=False,

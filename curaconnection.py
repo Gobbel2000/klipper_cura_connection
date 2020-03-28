@@ -16,17 +16,11 @@ from contentmanager import ContentManager
 import server
 from zeroconfhandler import ZeroConfHandler
 
-klippy_logger = logging.getLogger()
-assert(klippy_logger.name == "root")
-server_logger = logging.getLogger("root.server") # Inherits level
-server_logger.propagate = False # Avoid Server logs in klippy logs
-
 
 class CuraConnectionModule(object):
 
     def __init__(self, config):
         self.testing = config is None
-        klippy_logger.info("Cura Connection Module initializing...")
 
         # Global variables
         self.VERSION = "5.2.11" # We need to disguise as Cura Connect for now
@@ -37,6 +31,7 @@ class CuraConnectionModule(object):
         self.LOGFILE = os.path.join(self.PATH, "logs/server.log")
 
         self.configure_logging()
+        self.klippy_logger.info("Cura Connection Module initializing...")
 
         self.content_manager = ContentManager(self)
         self.zeroconf_handler = ZeroConfHandler(self.ADDRESS)
@@ -77,6 +72,9 @@ class CuraConnectionModule(object):
                 )
             formatter = logging.Formatter("%(levelname)s: \t%(message)s")
         handler.setFormatter(formatter)
+        self.klippy_logger = logging.getLogger()
+        server_logger = logging.getLogger("root.server")
+        server_logger.propagate = False # Avoid server logs in klippy logs
         server_logger.addHandler(handler)
 
     def handle_connect(self):
@@ -92,23 +90,23 @@ class CuraConnectionModule(object):
         """Start the zeroconf service and the server in a seperate thread"""
         self.content_manager.start()
         self.zeroconf_handler.start() # Non-blocking
-        klippy_logger.debug("Cura Connection Zeroconf service started")
+        self.klippy_logger.debug("Cura Connection Zeroconf service started")
         self.server.start() # Starts server thread
-        klippy_logger.debug("Cura Connection Server started")
+        self.klippy_logger.debug("Cura Connection Server started")
 
     def stop(self, *args):
         """This might take a little while, be patient"""
-        klippy_logger.debug("Cura Connection shutting down server...")
+        self.klippy_logger.debug("Cura Connection shutting down server...")
         self.zeroconf_handler.stop()
         self.server.shutdown()
         self.server.join()
-        klippy_logger.debug("Cura Connection Server shut down")
+        self.klippy_logger.debug("Cura Connection Server shut down")
 
 
     def send_print(self, path):
         """Start a print in klipper"""
         if self.testing:
-            klippy_logger.info("Start printing {}".format(path))
+            self.klippy_logger.info("Start printing {}".format(path))
             self.content_manager.add_test_print(path)
             return
         self.reactor.register_async_callback(
@@ -135,9 +133,6 @@ class CuraConnectionModule(object):
     def queue_delete(self, index, filename):
         """
         Delete the print job from the queue.
-        The index is checked as well as the filename in order to detect
-        changes in the queue that have not yet been updated in the
-        content manager.  In that case a LookupError is raised.
         """
         self._verify_queue(index, filename)
         queue = self.sdcard.queued_files
@@ -155,7 +150,12 @@ class CuraConnectionModule(object):
         self.send_queue(queue)
 
     def _verify_queue(self, index, filename):
-        """Raise AttributeError if filename is not at index in queue"""
+        """
+        Raise AttributeError if filename is not at index in queue.
+        The index is checked as well as the filename in order to detect
+        changes in the queue that have not yet been updated in the
+        content manager.  In that case an AttributeError is raised.
+        """
         queue = self.sdcard.queued_files
         if os.path.basename(queue[index][0]) != filename:
             raise AttributeError("Queues are desynchronised")
