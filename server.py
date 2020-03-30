@@ -257,7 +257,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def send_response(self, code, message=None, size=None):
         """
-        Accept size as an argument (can be int) which sends the
+        Accept size as an argument (can be int or str) which sends the
         Content-Length header and takes care of logging the size as well.
         """
         if size is not None:
@@ -266,7 +266,6 @@ class Handler(srv.BaseHTTPRequestHandler):
         if self._size is not None:
             self.send_header("Content-Length", self._size)
             self._size = None
-
 
     def log_request(self, code="-", size="-"):
         """Add size to logging"""
@@ -406,24 +405,15 @@ class MimeParser(object):
         """
         logger.debug("Writing file: {}".format(self.fpath))
         self.written_files.append(self.fpath)
-        buflen = 1024
 
         # Use two buffers in case the boundary gets cut in half
-        # Make sure to not attempt to read past the content length
-        buflen = min(self.bytes_left, buflen)
-        buf1 = self.fp.read(buflen)
-        self.bytes_left -= buflen
-
-        buflen = min(self.bytes_left, buflen)
-        buf2 = self.fp.read(buflen)
-        self.bytes_left -= buflen
+        buf1 = self._safe_read()
+        buf2 = self._safe_read()
         with open(self.fpath, "w") as write_fp:
             while self.boundary not in buf1 + buf2:
                 write_fp.write(buf1)
                 buf1 = buf2
-                buflen = min(self.bytes_left, buflen)
-                buf2 = self.fp.read(buflen)
-                self.bytes_left -= buflen
+                buf2 = self._safe_read()
             if self.bytes_left != 0:
                 # Catch the rest of the last line
                 remaining_lines = (
@@ -447,6 +437,12 @@ class MimeParser(object):
         # When reaching the end, StopIteration will be propagated up to parse()
         for line in remaining_lines[i:]:
             self._parse_line(line)
+
+    def _safe_read(self):
+        """Read a chunk that will not go past EOF"""
+        buflen = min(self.bytes_left, 1024)
+        self.bytes_left -= buflen
+        return self.fp.read(buflen)
 
     def _start_body(self, headers):
         """Initiate reading of the body depending on whether it is a file"""
