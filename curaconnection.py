@@ -135,13 +135,13 @@ class CuraConnectionModule(object):
         Delete the print job from the queue.
         """
         self._verify_queue(index, filename)
-        queue = self.sdcard.queued_files
+        queue = self.sdcard.jobs
         queue.pop(index)
         self.send_queue(queue)
 
     def queue_move(self, old_index, new_index, filename):
         self._verify_queue(old_index, filename)
-        queue = self.sdcard.queued_files
+        queue = self.sdcard.jobs
         if not (0 < new_index < len(queue)):
             raise IndexError(
                 "Can't move print job to index {}".format(new_index))
@@ -156,8 +156,8 @@ class CuraConnectionModule(object):
         changes in the queue that have not yet been updated in the
         content manager.  In that case an AttributeError is raised.
         """
-        queue = self.sdcard.queued_files
-        if os.path.basename(queue[index][0]) != filename:
+        queue = self.sdcard.jobs
+        if os.path.basename(queue[index].path) != filename:
             raise AttributeError("Queues are desynchronised")
 
 

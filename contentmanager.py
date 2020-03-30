@@ -101,8 +101,9 @@ class ContentManager(object):
         self.printer_status.configuration = configuration
         if self.module.testing:
             return
-        state = self.module.sdcard.get_status()["state"]
-        if state in {"printing", "paused"}:
+
+        state = self.module.sdcard.jobs[0].state
+        if state in {"printing", "paused", "pausing", "stopping"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
@@ -113,21 +114,24 @@ class ContentManager(object):
 
         # Update self.print_jobs with the queue
         new_print_jobs = []
-        for i, path in enumerate(s["queued_files"]):
+        for klippy_pj in s["printjobs"]:
             print_job = None
-            fname = os.path.basename(path)
-            for j, pj in enumerate(self.print_jobs):
-                if pj.name == fname:
+            fname = os.path.basename(klippy_pj.path)
+            # Find first cura print job with the same name
+            for j, cura_pj in enumerate(self.print_jobs):
+                if cura_pj.name == fname:
                     print_job = self.print_jobs.pop(j)
                     break
-            if print_job is None: # Newly add print job
-                new_print_jobs.append(self.get_print_job_status(path))
+            if print_job is None: # Newly added print job
+                new_print_jobs.append(
+                        self.get_print_job_status(klippy_pj.path))
             else:
                 new_print_jobs.append(print_job)
         self.print_jobs = new_print_jobs
 
         if self.print_jobs: # Update first print job if there is one
-            elapsed = self.module.sdcard.get_printed_time()
+            current_pj = s["printjobs"][0]
+            elapsed = current.get_printed_time()
             self.print_jobs[0].time_elapsed = int(elapsed)
             self.print_jobs[0].assigned_to = self.printer_status.uuid
             if s["estimated_remaining_time"] is None:
@@ -136,9 +140,17 @@ class ContentManager(object):
                 self.print_jobs[0].time_total = int(
                         s["estimated_remaining_time"] + elapsed)
 
-            if s["state"] in {"printing", "paused"}: # Should cover all cases
-                self.print_jobs[0].status = s["state"]
-            if s["state"] == "printing":
+            # State
+            if current.state == "stopping":
+                self.print_jobs[0].status = "aborting"
+            elif current.state == "stopped":
+                self.print_jobs[0].status = "aborted"
+            elif current.state == "done":
+                self.print_jobs[0].status = "finished"
+            else:
+                self.print_jobs[0].status = current.state
+
+            if current.state == "printing":
                 self.print_jobs[0].started = True
 
     @staticmethod
