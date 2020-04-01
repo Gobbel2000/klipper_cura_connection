@@ -11,6 +11,7 @@ import threading
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
+MJPG_STREAMER_PORT = 8081
 
 logger = logging.getLogger("root.server")
 
@@ -39,6 +40,10 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.get_json(self.content_manager.get_print_jobs())
         elif self.path == CLUSTER_API + "materials":
             self.get_json(self.content_manager.get_materials())
+        elif self.path == "/?action=stream":
+            self.get_stream()
+        elif self.path == "/?action=snapshot":
+            self.get_snapshot()
         elif self.path == "/print_jobs":
             self.send_response(HTTPStatus.MOVED_PERMANENTLY)
             self.send_header("Location", "https://youtu.be/dQw4w9WgXcQ")
@@ -121,6 +126,18 @@ class Handler(srv.BaseHTTPRequestHandler):
                 if chunk == "":
                     break
                 self.wfile.write(chunk)
+
+    def get_stream(self):
+        """Redirect to the port on which mjpg-streamer is running"""
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "http://{}:{}/?action=stream".format(
+            self.module.ADDRESS, MJPG_STREAMER_PORT))
+
+    def get_snapshot(self):
+        """Snapshot only sends a single image"""
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "http://{}:{}/?action=snapshot".format(
+            self.module.ADDRESS, MJPG_STREAMER_PORT))
 
     def post_print_job(self):
         boundary = self.headers.getparam("boundary")

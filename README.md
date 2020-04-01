@@ -121,5 +121,6 @@ Most come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
 |getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG file works)  |At job creation        |Temporary
 |startPrintJobUpload    |POST   |/print\_jobs/                  |owner & .gcode file (MIME)     |"Print over Network"   |True
 |sendMaterials          |POST   |/materials/                    |.xml.fdm-material file (MIME)  |Sent if not on printer |True
-|?                      |GET    |!/?action=stream               |?                              |Open stream            |False
+|stream                 |GET    |!/?action=stream               |Redirect                       |Open stream            |True
+|snapshot               |GET    |!/?action=snapshot             |Redirect                       |None                   |True
 |?                      |GET    |!/print\_jobs                  |?                              |Browser view           |False
