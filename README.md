@@ -97,7 +97,7 @@ With the configurations set first the installation is automatic and the
 rules we just set are written to /etc/iptables/rule.v4.
 
 ```bash
-sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8080
+sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8008
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 sudo apt -y install iptables-persistent

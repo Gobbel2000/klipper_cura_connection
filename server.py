@@ -11,7 +11,7 @@ import threading
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
-MJPG_STREAMER_PORT = 8081
+MJPG_STREAMER_PORT = 8080
 
 logger = logging.getLogger("root.server")
 
@@ -502,4 +502,4 @@ class Server(srv.HTTPServer, threading.Thread):
 
 
 def get_server(module):
-    return Server((module.ADDRESS, 8080), Handler, module)
+    return Server((module.ADDRESS, 8008), Handler, module)
