@@ -10,6 +10,7 @@ shutting down,  which is handled in the CuraConnectionModule class.
 import logging
 import logging.handlers
 import os
+import platform
 import socket
 
 from contentmanager import ContentManager
@@ -25,6 +26,7 @@ class CuraConnectionModule(object):
         # Global variables
         self.VERSION = "5.2.11" # We need to disguise as Cura Connect for now
         self.ADDRESS = self.get_ip()
+        self.NAME = platform.node()
         self.SDCARD_PATH = os.path.expanduser("~/sdcard")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
         self.PATH = os.path.dirname(os.path.realpath(__file__))
@@ -34,7 +36,7 @@ class CuraConnectionModule(object):
         self.klippy_logger.info("Cura Connection Module initializing...")
 
         self.content_manager = ContentManager(self)
-        self.zeroconf_handler = ZeroConfHandler(self.ADDRESS)
+        self.zeroconf_handler = ZeroConfHandler(self)
         self.server = server.get_server(self)
 
         if self.testing:

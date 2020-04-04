@@ -18,13 +18,13 @@ class ContentManager(object):
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
             firmware_version=self.module.VERSION,
-            friendly_name="Super Sayan Printer",
+            friendly_name=self.module.NAME, # hostname
             ip_address=self.module.ADDRESS,
             machine_variant="Ultimaker 3",
             # One of: idle, printing, error, maintenance, booting
             status="idle",
-            unique_name="super_sayan_printer",
-            uuid=self.new_uuid(), # Use consistent UUID or not?
+            unique_name=self.get_mac_address(),
+            uuid=self.new_uuid(),
             configuration=[],
         )
         self.print_jobs = [] # type: [ClusterPrintJobStatus]
@@ -156,15 +156,24 @@ class ContentManager(object):
     @staticmethod
     def new_uuid():
         """Returns a newly generated UUID as a str"""
-        # uuid1() returns a uuid based on time and IP address
-        # uuid4() would generate a completely random uuid
-        return str(uuid.uuid1())
+        # uuid4() generates a completely random uuid
+        return str(uuid.uuid4())
 
     @staticmethod
     def get_time_str():
         """Returns the current UTC time in a string in ISO8601 format"""
         now = datetime.utcnow()
         return now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    @staticmethod
+    def get_mac_address():
+        """Return the mac address in form XX:XX:XX:XX:XX:XX"""
+        raw = uuid.getnode()
+        hex_ = []
+        while raw:
+            hex_.insert(0, hex(int(raw % 0x100))) # raw is long
+            raw = raw >> 8
+        return ":".join([i.lstrip("0x").zfill(2) for i in hex_])
 
     def uuid_to_print_job(self, uuid):
         """

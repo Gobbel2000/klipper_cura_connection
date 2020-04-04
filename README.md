@@ -63,7 +63,6 @@ Status strings as of DevBlog2:
 * Figure out which file type to send and if to compress.  
     Currently uncompressed GCode files are sent  
     Possibly use _ufp_ or _gcode.gz_?
-* Video stream?
 
 
 ## What's happening in Cura?
