@@ -4,6 +4,8 @@ import zeroconf as zc
 
 class ZeroConfHandler(object):
 
+    SERVICE_TYPE = "_klipper._tcp.local."
+
     def __init__(self, module):
         self.module = module
         self.zeroconf = zc.Zeroconf()
@@ -13,14 +15,12 @@ class ZeroConfHandler(object):
             b'name': bytes(self.module.NAME),
             # BOM-number, for now we disguise as an Ultimaker 3
             b'machine': b'213482',
-            b'firmware_version': b'5.2.11',
-            # needs testing
-            #b'cluster_size': 0,
+            b'firmware_version': bytes(self.module.VERSION),
             }
 
         self.info = zc.ServiceInfo(
-            type_="_klipper._tcp.local.",
-            name="Klipper Networked Printer._klipper._tcp.local.",
+            type_=self.SERVICE_TYPE,
+            name=self.module.NAME + "." + self.SERVICE_TYPE,
             address=socket.inet_aton(self.module.ADDRESS),
             port=80, # Default HTTP port, this is where Cura sends to
             properties=self.prop_dict,

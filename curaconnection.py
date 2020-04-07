@@ -14,6 +14,7 @@ import platform
 import socket
 
 from contentmanager import ContentManager
+from custom_exceptions import QueuesDesynchronizedError
 import server
 from zeroconfhandler import ZeroConfHandler
 
@@ -151,17 +152,24 @@ class CuraConnectionModule(object):
         queue.insert(new_index, to_move)
         self.send_queue(queue)
 
+    def get_thumbnail_path(index, filename):
+        """Return the thumbnail path for the specified printjob"""
+        self._verify_queue(index, filename)
+        return (self.sdcard.jobs[index].thumbnail_path or
+                os.path.join(self.PATH, "tux.png"))
+
     def _verify_queue(self, index, filename):
         """
-        Raise AttributeError if filename is not at index in queue.
+        Raise QueuesDesynchronizedError if filename is not at index in queue.
         The index is checked as well as the filename in order to detect
         changes in the queue that have not yet been updated in the
-        content manager.  In that case an AttributeError is raised.
+        content manager.
         """
         queue = self.sdcard.jobs
-        if os.path.basename(queue[index].path) != filename:
-            raise AttributeError("Queues are desynchronised")
-
+        try:
+            assert(os.path.basename(queue[index].path) == filename)
+        except (IndexError, AssertionError):
+            raise QueuesDesynchronizedError()
 
     @staticmethod
     def get_ip():
