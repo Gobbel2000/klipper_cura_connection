@@ -1,7 +1,6 @@
 from datetime import datetime
 import os
-import uuid
-import xml.etree.ElementTree as ET
+import uuid as uuid_lib
 
 from Models.Http.ClusterMaterial import ClusterMaterial
 from Models.Http.ClusterPrintCoreConfiguration import (
@@ -157,7 +156,7 @@ class ContentManager(object):
     def new_uuid():
         """Returns a newly generated UUID as a str"""
         # uuid4() generates a completely random uuid
-        return str(uuid.uuid4())
+        return str(uuid_lib.uuid4())
 
     @staticmethod
     def get_time_str():
@@ -168,7 +167,7 @@ class ContentManager(object):
     @staticmethod
     def get_mac_address():
         """Return the mac address in form XX:XX:XX:XX:XX:XX"""
-        raw = uuid.getnode()
+        raw = uuid_lib.getnode()
         hex_ = []
         while raw:
             hex_.insert(0, hex(int(raw % 0x100))) # raw is long

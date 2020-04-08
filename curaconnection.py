@@ -59,11 +59,12 @@ class CuraConnectionModule(object):
 
     def configure_logging(self):
         """Add log handler based on testing"""
+        formatter = logging.Formatter(
+                fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
         if self.testing:
             # Log to console in testing mode
             logging.basicConfig(level=logging.DEBUG)
             handler = logging.StreamHandler()
-            formatter = logging.Formatter("%(levelname)s: \t%(message)s")
         else:
             with open(self.LOGFILE, "a") as fp:
                 fp.write("\n=== RESTART ===\n\n")
@@ -73,7 +74,6 @@ class CuraConnectionModule(object):
                     backupCount=3, # up to 4 files total
                     delay=True, # Open file only once needed
                 )
-            formatter = logging.Formatter("%(levelname)s: \t%(message)s")
         handler.setFormatter(formatter)
         self.klippy_logger = logging.getLogger()
         server_logger = logging.getLogger("root.server")

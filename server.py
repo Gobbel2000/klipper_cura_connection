@@ -122,6 +122,7 @@ class Handler(srv.BaseHTTPRequestHandler):
                 with open(thumbnail_path, "rb") as fp:
                     image_data = fp.read()
                 self.send_response(HTTPStatus.OK, size=len(image_data))
+                self.send_header("Content-Type", "image/png")
                 self.end_headers()
                 self.wfile.write(image_data)
             except QueuesDesynchronizedError:
@@ -298,16 +299,14 @@ class Handler(srv.BaseHTTPRequestHandler):
         # Overwrite format string. Default is "code %d, message %s"
         if format == "code %d, message %s":
             format = "Errorcode %d: %s"
-        message = ("%s - [%s] %s" %
+        message = ("<%s> %s" %
                 (self.address_string(),
-                 self.log_date_time_string(),
                  format%args))
         logger.error(message)
 
     def log_message(self, format, *args):
-        message = ("%s - [%s] %s" %
+        message = ("<%s> %s" %
                 (self.address_string(),
-                 self.log_date_time_string(),
                  format%args))
         if (self.path == CLUSTER_API + "printers" or
             self.path == CLUSTER_API + "print_jobs"):
