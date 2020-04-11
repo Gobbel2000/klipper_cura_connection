@@ -2,9 +2,9 @@ import socket
 import zeroconf as zc
 
 
-class ZeroConfHandler(object):
+class ZeroConfHandler:
 
-    SERVICE_TYPE = "_klipper._tcp.local."
+    SERVICE_TYPE = "_ultimaker._tcp.local."
 
     def __init__(self, module):
         self.module = module
@@ -12,10 +12,10 @@ class ZeroConfHandler(object):
         self.prop_dict = {
             # Necessary to be noticed by Cura
             b'type': b'printer',
-            b'name': bytes(self.module.NAME),
+            b'name': self.module.NAME.encode(),
             # BOM-number, for now we disguise as an Ultimaker 3
             b'machine': b'213482',
-            b'firmware_version': bytes(self.module.VERSION),
+            b'firmware_version': self.module.VERSION.encode(),
             }
 
         self.info = zc.ServiceInfo(

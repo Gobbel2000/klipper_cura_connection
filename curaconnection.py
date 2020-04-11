@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 Handles the discovery and the server for the  connection with Cura.
 
@@ -13,13 +13,13 @@ import os
 import platform
 import socket
 
-from contentmanager import ContentManager
-from custom_exceptions import QueuesDesynchronizedError
-import server
-from zeroconfhandler import ZeroConfHandler
+from .contentmanager import ContentManager
+from .custom_exceptions import QueuesDesynchronizedError
+from . import server
+from .zeroconfhandler import ZeroConfHandler
 
 
-class CuraConnectionModule(object):
+class CuraConnectionModule:
 
     def __init__(self, config):
         self.testing = config is None
@@ -152,7 +152,7 @@ class CuraConnectionModule(object):
         queue.insert(new_index, to_move)
         self.send_queue(queue)
 
-    def get_thumbnail_path(index, filename):
+    def get_thumbnail_path(self, index, filename):
         """Return the thumbnail path for the specified printjob"""
         self._verify_queue(index, filename)
         return (self.sdcard.jobs[index].thumbnail_path or

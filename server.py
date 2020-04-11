@@ -1,14 +1,12 @@
-#PYTHON3: from http import HTTPStatus
-#PYTHON3: import http.server as srv
-import httplib as HTTPStatus
-import BaseHTTPServer as srv
+from http import HTTPStatus
+import http.server as srv
 import json
 import logging
 import re
 import threading
 
-from custom_exceptions import QueuesDesynchronizedError
-from mimeparser import MimeParser
+from .custom_exceptions import QueuesDesynchronizedError
+from .mimeparser import MimeParser
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
@@ -20,12 +18,10 @@ logger = logging.getLogger("root.server")
 class Handler(srv.BaseHTTPRequestHandler):
 
     def __init__(self, request, client_address, server):
-        """This is the worst thing ever but it somehow works"""
         self.module = server.module
         self.content_manager = self.module.content_manager
         self._size = None # For logging GET requests
-        srv.BaseHTTPRequestHandler.__init__(
-                self, request, client_address, server)
+        super().__init__(request, client_address, server)
 
     def do_GET(self):
         """
@@ -45,26 +41,24 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.get_stream()
         elif self.path == "/?action=snapshot":
             self.get_snapshot()
+        elif (m := self.handle_uuid_path()) and (
+                m.group("suffix") == "/preview_image"):
+            self.get_preview_image(m.group("uuid"))
         else:
-            m = self.handle_uuid_path()
-            if m and m.group("suffix") == "/preview_image":
-                self.get_preview_image(m.group("uuid"))
-            else:
-                # NOTE: send_error() calls end_headers()
-                self.send_error(HTTPStatus.NOT_FOUND)
+            # NOTE: send_error() calls end_headers()
+            self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self):
-        if self.headers.getmaintype() == "multipart":
+        if self.headers.get_content_maintype() == "multipart":
             if self.path == CLUSTER_API + "print_jobs/":
                 self.post_print_job()
             elif self.path == CLUSTER_API + "materials/":
                 self.post_material()
+        elif (m := self.handle_uuid_path()) and (
+                m.group("suffix") == "/action/move"):
+            self.post_move_to_top(m.group("uuid"))
         else:
-            m = self.handle_uuid_path()
-            if m and m.group("suffix") == "/action/move":
-                self.post_move_to_top(m.group("uuid"))
-            else:
-                self.send_error(HTTPStatus.NOT_FOUND)
+            self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_PUT(self):
         m = self.handle_uuid_path()
@@ -108,7 +102,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.OK, size=len(json_content))
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json_content)
+            self.wfile.write(json_content.encode())
 
     def get_preview_image(self, uuid):
         """Send back the preview image for the print job with uuid"""
@@ -145,7 +139,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.module.ADDRESS, MJPG_STREAMER_PORT))
 
     def post_print_job(self):
-        boundary = self.headers.getparam("boundary")
+        boundary = self.headers.get_boundary()
         length = int(self.headers.get("Content-Length", 0))
         try:
             parser = MimeParser(self.rfile, boundary, length,
@@ -164,7 +158,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.end_headers()
 
     def post_material(self):
-        boundary = self.headers.getparam("boundary")
+        boundary = self.headers.get_boundary()
         length = int(self.headers.get("Content-Length", 0))
         try:
             parser = MimeParser(self.rfile, boundary, length,
@@ -319,7 +313,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 class Server(srv.HTTPServer, threading.Thread):
     """Wrapper class to store the module in the server and add threading"""
     def __init__(self, server_address, RequestHandler, module):
-        srv.HTTPServer.__init__(self, server_address, RequestHandler)
+        super().__init__(server_address, RequestHandler)
         threading.Thread.__init__(self)
         self.module = module
 

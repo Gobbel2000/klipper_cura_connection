@@ -2,14 +2,14 @@ from datetime import datetime
 import os
 import uuid as uuid_lib
 
-from Models.Http.ClusterMaterial import ClusterMaterial
-from Models.Http.ClusterPrintCoreConfiguration import (
+from .Models.Http.ClusterMaterial import ClusterMaterial
+from .Models.Http.ClusterPrintCoreConfiguration import (
         ClusterPrintCoreConfiguration)
-from Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
-from Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
+from .Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
+from .Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
 
-class ContentManager(object):
+class ContentManager:
 
     def __init__(self, module):
         self.module = module

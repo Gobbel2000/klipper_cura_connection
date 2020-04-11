@@ -4,7 +4,7 @@ import os.path
 
 logger = logging.getLogger("root.server")
 
-class MimeParser(object):
+class MimeParser:
     """
     Parser for MIME messages which directly writes attached files.
 
@@ -32,7 +32,7 @@ class MimeParser(object):
 
     def __init__(self, fp, boundary, length, out_dir, overwrite=True):
         self.fp = fp
-        self.boundary = boundary
+        self.boundary = boundary.encode()
         self.bytes_left = length
         self.out_dir = out_dir
         self.overwrite = overwrite
@@ -42,8 +42,8 @@ class MimeParser(object):
         # What we are reading right now. One of:
         # self.HEADERS, self.BODY, self.FILE (0, 1, 2)
         self._state = None
-        self._current_headers = ""
-        self._current_body = ""
+        self._current_headers = b""
+        self._current_body = b""
         self.fpath = "" # Path to the file to write to
 
     def parse(self):
@@ -68,14 +68,14 @@ class MimeParser(object):
         Raising StopIteration breaks the loop in self.parse().
         """
         # Previous message is finished
-        if line.startswith("--" + self.boundary):
+        if line.startswith(b"--" + self.boundary):
             if self._current_body:
                 self.submessages[-1].set_payload(
-                        self._current_body.rstrip("\r\n"))
-                self._current_body = ""
+                        self._current_body.rstrip(b"\r\n"))
+                self._current_body = b""
             self._state = self.HEADERS # Read headers next
             # This is the last line of the MIME message
-            if line.strip() == "--" + self.boundary + "--":
+            if line.strip() == b"--" + self.boundary + b"--":
                 raise StopIteration()
         # Parse dependent on _state
         elif self._state == self.HEADERS:
@@ -90,9 +90,9 @@ class MimeParser(object):
 
     def _parse_headers(self, line):
         """Add the new line to the headers or parse the full header"""
-        if line == "\r\n": # End of headers
-            headers_message = email.message_from_string(self._current_headers)
-            self._current_headers = ""
+        if line == b"\r\n": # End of headers
+            headers_message = email.message_from_bytes(self._current_headers)
+            self._current_headers = b""
             self.submessages.append(headers_message)
             self._start_body(headers_message)
         else:
@@ -117,7 +117,7 @@ class MimeParser(object):
         # Use two buffers in case the boundary gets cut in half
         buf1 = self._safe_read()
         buf2 = self._safe_read()
-        with open(self.fpath, "w") as write_fp:
+        with open(self.fpath, "wb") as write_fp:
             while self.boundary not in buf1 + buf2:
                 write_fp.write(buf1)
                 buf1 = buf2
@@ -131,7 +131,7 @@ class MimeParser(object):
 
             # We need an exception for the last line of the file to strip
             # the trailing "\r\n" (<CR><LF>)
-            prev_line = ""
+            prev_line = b""
             # We take the index with us so we now where to pick up below
             for i, line in enumerate(remaining_lines):
                 if self.boundary not in line:
@@ -139,7 +139,7 @@ class MimeParser(object):
                     prev_line = line
                 else:
                     # Now write the last line, but stripped
-                    write_fp.write(prev_line.rstrip("\r\n"))
+                    write_fp.write(prev_line.rstrip(b"\r\n"))
                     break
         # Parse all other lines left in the buffer normally
         # When reaching the end, StopIteration will be propagated up to parse()

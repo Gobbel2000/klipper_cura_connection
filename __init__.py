@@ -1,1 +1,1 @@
-from curaconnection import load_config
+from .curaconnection import load_config
