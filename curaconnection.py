@@ -42,8 +42,7 @@ class CuraConnectionModule:
 
         if self.testing:
             import site
-            p = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-            site.addsitedir(p)
+            site.addsitedir(os.path.dirname(self.PATH))
             import filament_manager
             self.filament_manager = filament_manager.load_config(None)
             return
@@ -190,14 +189,3 @@ def load_config(config):
     """Entry point, called by Klippy"""
     module = CuraConnectionModule(config)
     return module
-
-if __name__ == "__main__":
-    import time
-    module = CuraConnectionModule(None)
-    module.start()
-    while True:
-        try:
-            time.sleep(0.1)
-        except KeyboardInterrupt:
-            module.stop()
-            break
