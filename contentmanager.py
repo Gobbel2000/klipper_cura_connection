@@ -35,7 +35,7 @@ class ContentManager:
         Must be called later so that filament_manager is available.
         """
         for guid in self.module.filament_manager.guid_to_path:
-            version = int(self.module.filament_manager.get_material_info(guid,
+            version = int(self.module.filament_manager.get_info(guid,
                     "./m:metadata/m:version"))
             self.materials.append(ClusterMaterial(
                 guid=guid,
@@ -84,10 +84,9 @@ class ContentManager:
             if material is None:
                 continue
             guid = material[0]
-            brand = fm.get_material_info(guid, "./m:metadata/m:name/m:brand")
-            color = fm.get_material_info(guid, "./m:metadata/m:name/m:color")
-            material = fm.get_material_info(guid,
-                    "./m:metadata/m:name/m:material")
+            brand = fm.get_info(guid, "./m:metadata/m:name/m:brand")
+            color = fm.get_info(guid, "./m:metadata/m:name/m:color")
+            material = fm.get_info(guid, "./m:metadata/m:name/m:material")
             configuration.append(ClusterPrintCoreConfiguration(
                 extruder_index=i,
                 material={
