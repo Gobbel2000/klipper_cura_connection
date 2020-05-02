@@ -41,12 +41,13 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.get_stream()
         elif self.path == "/?action=snapshot":
             self.get_snapshot()
-        elif (m := self.handle_uuid_path()) and (
-                m.group("suffix") == "/preview_image"):
-            self.get_preview_image(m.group("uuid"))
         else:
-            # NOTE: send_error() calls end_headers()
-            self.send_error(HTTPStatus.NOT_FOUND)
+            m = self.handle_uuid_path()
+            if m and m.group("suffix") == "/preview_image":
+                self.get_preview_image(m.group("uuid"))
+            else:
+                # NOTE: send_error() calls end_headers()
+                self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self):
         if self.headers.get_content_maintype() == "multipart":
@@ -54,11 +55,12 @@ class Handler(srv.BaseHTTPRequestHandler):
                 self.post_print_job()
             elif self.path == CLUSTER_API + "materials/":
                 self.post_material()
-        elif (m := self.handle_uuid_path()) and (
-                m.group("suffix") == "/action/move"):
-            self.post_move_to_top(m.group("uuid"))
         else:
-            self.send_error(HTTPStatus.NOT_FOUND)
+            m = self.handle_uuid_path()
+            if m and m.group("suffix") == "/action/move":
+                self.post_move_to_top(m.group("uuid"))
+            else:
+                self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_PUT(self):
         m = self.handle_uuid_path()
