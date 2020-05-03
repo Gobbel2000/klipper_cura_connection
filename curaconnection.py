@@ -152,7 +152,7 @@ class CuraConnectionModule(object):
         queue.insert(new_index, to_move)
         self.send_queue(queue)
 
-    def get_thumbnail_path(index, filename):
+    def get_thumbnail_path(self, index, filename):
         """Return the thumbnail path for the specified printjob"""
         self._verify_queue(index, filename)
         return (self.sdcard.jobs[index].thumbnail_path or
