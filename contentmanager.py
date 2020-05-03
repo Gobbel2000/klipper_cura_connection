@@ -79,7 +79,7 @@ class ContentManager:
         """Update currently loaded material (TODO) and state"""
         configuration = []
         fm = self.module.filament_manager
-        loaded_materials = fm.loaded_materials
+        loaded_materials = fm.material["loaded"]
         for i, material in enumerate(loaded_materials):
             if material is None:
                 continue
