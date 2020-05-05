@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import threading
+import time
 
 from .custom_exceptions import QueuesDesynchronizedError
 from .mimeparser import MimeParser
@@ -98,7 +99,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         try:
             json_content = json.dumps(content)
         except TypeError:
-            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR,
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
                     "JSON serialization failed")
         else:
             self.send_response(HTTPStatus.OK, size=len(json_content))
@@ -281,6 +282,9 @@ class Handler(srv.BaseHTTPRequestHandler):
         if size is not None:
             self._size = str(size)
         srv.BaseHTTPRequestHandler.send_response(self, code, message)
+        # Keep track of when the last request was handled
+        # send_error() also calls here
+        self.server.last_request = time.time()
         if self._size is not None:
             self.send_header("Content-Length", self._size)
             self._size = None
@@ -318,6 +322,7 @@ class Server(srv.HTTPServer, threading.Thread):
         super().__init__(server_address, RequestHandler)
         threading.Thread.__init__(self)
         self.module = module
+        self.last_request = 0 # Time of last request in seconds since epoch
 
     run = srv.HTTPServer.serve_forever
 

@@ -12,6 +12,7 @@ import logging.handlers
 import os
 import platform
 import socket
+import time
 
 from .contentmanager import ContentManager
 from .custom_exceptions import QueuesDesynchronizedError
@@ -20,6 +21,10 @@ from .zeroconfhandler import ZeroConfHandler
 
 
 class CuraConnectionModule:
+
+    # How many seconds after the last request to consider disconnected
+    # 4.2 allows missing just one update cycle (every 2sec)
+    CONNECTION_TIMEOUT = 4.2
 
     def __init__(self, config):
         self.testing = config is None
@@ -103,6 +108,13 @@ class CuraConnectionModule:
         self.server.shutdown()
         self.server.join()
         self.klippy_logger.debug("Cura Connection Server shut down")
+
+    def is_connected(self):
+        """
+        Return true if there currently is an active connection.
+        Also see CONNECTION_TIMEOUT
+        """
+        return time.time() - self.server.last_request < self.CONNECTION_TIMEOUT
 
 
     def send_print(self, path):
