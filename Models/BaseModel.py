@@ -39,9 +39,12 @@ class BaseModel:
     def serialize(self) -> Dict[str, Any]:
         # deepcopy to not mutate the object
         dictionary = deepcopy(self.toDict())
+        to_remove = [] # None-values that will be removed
         for k, v in dictionary.items():
+            if v is None:
+                to_remove.append(k)
             # Serialize recursively if we encounter another Model
-            if isinstance(v, BaseModel): # Gets all Models
+            elif isinstance(v, BaseModel): # Gets all Models
                 dictionary[k] = v.serialize()
             # It could also be a list of models
             elif isinstance(v, list):
@@ -52,6 +55,8 @@ class BaseModel:
             elif isinstance(v, datetime):
                 # Replace with date string as parsed by self.parseDate()
                 dictionary[k] = v.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        for k in to_remove:
+            del dictionary[k]
         return dictionary
 
     ## Parses a single model.
