@@ -81,9 +81,9 @@ class ContentManager:
         fm = self.module.filament_manager
         loaded_materials = fm.material["loaded"]
         for i, material in enumerate(loaded_materials):
-            if material is None:
+            if material['guid'] is None:
                 continue
-            guid = material[0]
+            guid = material['guid']
             brand = fm.get_info(guid, "./m:metadata/m:name/m:brand")
             color = fm.get_info(guid, "./m:metadata/m:name/m:color")
             material = fm.get_info(guid, "./m:metadata/m:name/m:material")
@@ -99,9 +99,8 @@ class ContentManager:
         self.printer_status.configuration = configuration
         if self.module.testing:
             return
-
-        state = self.module.sdcard.jobs[0].state
-        if state in {"printing", "paused", "pausing", "stopping"}:
+        jobs = self.module.sdcard.jobs
+        if jobs and jobs[0].state in {"printing", "paused", "pausing", "stopping"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
