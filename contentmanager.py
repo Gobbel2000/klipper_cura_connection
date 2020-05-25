@@ -113,21 +113,19 @@ class ContentManager:
         new_print_jobs = []
         for klippy_pj in s["printjobs"]:
             print_job = None
-            fname = os.path.basename(klippy_pj.path)
             # Find first cura print job with the same name
             for j, cura_pj in enumerate(self.print_jobs):
-                if cura_pj.name == fname:
+                if cura_pj.name == os.path.basename(klippy_pj.path):
                     print_job = self.print_jobs.pop(j)
                     break
             if print_job is None: # Newly added print job
-                new_print_jobs.append(
-                        self.get_print_job_status(klippy_pj.path))
+                new_print_jobs.append(self.get_print_job_status(klippy_pj.path))
             else:
                 new_print_jobs.append(print_job)
         self.print_jobs = new_print_jobs
 
         if self.print_jobs: # Update first print job if there is one
-            current_pj = s["printjobs"][0]
+            current = s["printjobs"][0]
             elapsed = current.get_printed_time()
             self.print_jobs[0].time_elapsed = int(elapsed)
             self.print_jobs[0].assigned_to = self.printer_status.uuid

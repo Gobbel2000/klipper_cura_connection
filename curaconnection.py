@@ -99,12 +99,20 @@ class CuraConnectionModule:
         self.klippy_logger.debug("Cura Connection Server started")
 
     def stop(self, *args):
-        """This might take a little while, be patient"""
+        """
+        This might take a little while, be patient
+        can be called before start() e.g. when klipper initialization fails
+        """
         self.klippy_logger.debug("Cura Connection shutting down server...")
-        self.zeroconf_handler.stop()
-        self.server.shutdown()
-        self.server.join()
-        self.klippy_logger.debug("Cura Connection Server shut down")
+        try:
+            self.zeroconf_handler.stop()
+            self.klippy_logger.debug("Cura Connection Zeroconf shut down")
+        except:
+            pass
+        if self.server.is_alive():
+            self.server.shutdown()
+            self.server.join()
+            self.klippy_logger.debug("Cura Connection Server shut down")
 
     def is_connected(self):
         """
@@ -112,7 +120,6 @@ class CuraConnectionModule:
         Also see CONNECTION_TIMEOUT
         """
         return time.time() - self.server.last_request < self.CONNECTION_TIMEOUT
-
 
     def send_print(self, path):
         """Start a print in klipper"""
