@@ -30,9 +30,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         that we can expect from Cura.  For a summary of those see
         README.md
         """
-        if self.path == PRINTER_API + "system":
-            self.get_json(self.content_manager.get_system())
-        elif self.path == CLUSTER_API + "printers":
+        if self.path == CLUSTER_API + "printers":
             self.get_json(self.content_manager.get_printer_status())
         elif self.path == CLUSTER_API + "print_jobs":
             self.get_json(self.content_manager.get_print_jobs())
@@ -42,6 +40,8 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.get_stream()
         elif self.path == "/?action=snapshot":
             self.get_snapshot()
+        elif self.path == PRINTER_API + "system":
+            self.send_error(HTTPStatus.NOT_IMPLEMENTED)
         else:
             m = self.handle_uuid_path()
             if m and m.group("suffix") == "/preview_image":
@@ -134,12 +134,14 @@ class Handler(srv.BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.FOUND)
         self.send_header("Location", "http://{}:{}/?action=stream".format(
             self.module.ADDRESS, MJPG_STREAMER_PORT))
+        self.end_headers()
 
     def get_snapshot(self):
         """Snapshot only sends a single image"""
         self.send_response(HTTPStatus.FOUND)
         self.send_header("Location", "http://{}:{}/?action=snapshot".format(
             self.module.ADDRESS, MJPG_STREAMER_PORT))
+        self.end_headers()
 
     def post_print_job(self):
         boundary = self.headers.get_boundary()
@@ -152,10 +154,10 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
                     "Parser failed: " + str(e))
         else:
-            for msg in submessages:
-                name = msg.get_param("name", header="Content-Disposition")
-                if name == "owner":
-                    owner = msg.get_payload().strip()
+            #for msg in submessages:
+            #    name = msg.get_param("name", header="Content-Disposition")
+            #    if name == "owner":
+            #        owner = msg.get_payload().strip()
             self.module.send_print(paths[0])
             self.send_response(HTTPStatus.OK)
             self.end_headers()

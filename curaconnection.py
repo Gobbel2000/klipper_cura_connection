@@ -104,11 +104,8 @@ class CuraConnectionModule:
         can be called before start() e.g. when klipper initialization fails
         """
         self.klippy_logger.debug("Cura Connection shutting down server...")
-        try:
-            self.zeroconf_handler.stop()
-            self.klippy_logger.debug("Cura Connection Zeroconf shut down")
-        except:
-            pass
+        self.zeroconf_handler.stop()
+        self.klippy_logger.debug("Cura Connection Zeroconf shut down")
         if self.server.is_alive():
             self.server.shutdown()
             self.server.join()

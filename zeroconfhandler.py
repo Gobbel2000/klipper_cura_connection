@@ -28,9 +28,11 @@ class ZeroConfHandler:
 
     def start(self):
         """Start the zeroconf service"""
-        self.zeroconf.register_service(self.info, allow_name_change=True)
+        self.zeroconf.register_service(self.info)
 
     def stop(self):
         """Stop the zeroconf service"""
-        self.zeroconf.unregister_service(self.info)
+        # Check if this service is running
+        if self.info.name.lower() in self.zeroconf.services:
+            self.zeroconf.unregister_service(self.info)
         self.zeroconf.close()
