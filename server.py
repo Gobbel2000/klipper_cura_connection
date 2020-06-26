@@ -15,8 +15,17 @@ MJPG_STREAMER_PORT = 8080
 
 logger = logging.getLogger("root.server")
 
-
 class Handler(srv.BaseHTTPRequestHandler):
+
+    """
+    Regex for a path in form:
+    /cluster-api/v1/print_jobs/<UUID>...
+    with the uuid and the suffix (everything past the uuid) in their
+    respective groups "uuid" and "suffix".
+    """
+    uuid_regex = re.compile(r"^" + CLUSTER_API + r"print_jobs/"
+            + r"(?P<uuid>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})"
+            + r"(?P<suffix>.*)$")
 
     def __init__(self, request, client_address, server):
         self.module = server.module
@@ -43,7 +52,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         elif self.path == PRINTER_API + "system":
             self.send_error(HTTPStatus.NOT_IMPLEMENTED)
         else:
-            m = self.handle_uuid_path()
+            m = self.uuid_regex.match(self.path)
             if m and m.group("suffix") == "/preview_image":
                 self.get_preview_image(m.group("uuid"))
             else:
@@ -57,14 +66,14 @@ class Handler(srv.BaseHTTPRequestHandler):
             elif self.path == CLUSTER_API + "materials/":
                 self.post_material()
         else:
-            m = self.handle_uuid_path()
+            m = self.uuid_regex.match(self.path)
             if m and m.group("suffix") == "/action/move":
                 self.post_move_to_top(m.group("uuid"))
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_PUT(self):
-        m = self.handle_uuid_path()
+        m = self.uuid_regex.match(self.path)
         if m and m.group("suffix") == "/action":
             # pause, print or abort
             self.put_action(m.group("uuid"))
@@ -75,24 +84,12 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_DELETE(self):
-        m = self.handle_uuid_path()
+        m = self.uuid_regex.match(self.path)
         if m and not m.group("suffix"):
             # Delete print job from queue
             self.delete_print_job(m.group("uuid"))
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
-
-    def handle_uuid_path(self):
-        """
-        Return the regex match for a path in form:
-        /cluster-api/v1/print_jobs/<UUID>...
-        with the uuid and the suffix (everything past the uuid) in their
-        respective groups.
-        """
-        return re.match(r"^" + CLUSTER_API + r"print_jobs/"
-                + r"(?P<uuid>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})"
-                + r"(?P<suffix>.*)$", self.path)
-
 
     def get_json(self, content):
         """Send an object JSON-formatted"""
