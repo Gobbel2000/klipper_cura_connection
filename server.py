@@ -286,33 +286,28 @@ class Handler(srv.BaseHTTPRequestHandler):
         self.server.last_request = time.time()
         if self._size is not None:
             self.send_header("Content-Length", self._size)
-            self._size = None
 
     def log_request(self, code="-", size="-"):
         """Add size to logging"""
-        s = self._size + "B" if self._size is not None else size
-        srv.BaseHTTPRequestHandler.log_request(self, code, s)
+        if self._size is not None:
+            size = self._size + "B"
+        srv.BaseHTTPRequestHandler.log_request(self, code, size)
 
     def log_error(self, format, *args):
         """Similar to log_message, but log under loglevel ERROR"""
         # Overwrite format string. Default is "code %d, message %s"
         if format == "code %d, message %s":
             format = "Errorcode %d: %s"
-        message = ("<%s> %s" %
-                (self.address_string(),
-                 format%args))
-        logger.error(message)
+        logger.error("<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
-        message = ("<%s> %s" %
-                (self.address_string(),
-                 format%args))
         if (self.path == CLUSTER_API + "printers" or
             self.path == CLUSTER_API + "print_jobs"):
             # Put periodic requests to DEBUG
-            logger.debug(message)
+            level = logging.DEBUG
         else:
-            logger.info(message)
+            level = logging.INFO
+        logger.log(level, "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.HTTPServer, threading.Thread):

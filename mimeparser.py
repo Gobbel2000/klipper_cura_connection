@@ -111,7 +111,7 @@ class MimeParser:
         buffer but do not belong to the file (everything past the first
         occurance of boundary).
         """
-        logger.debug("Writing file: {}".format(self.fpath))
+        logger.debug("Writing file: %s", self.fpath)
         self.written_files.append(self.fpath)
 
         # Use two buffers in case the boundary gets cut in half
@@ -132,7 +132,7 @@ class MimeParser:
             # We need an exception for the last line of the file to strip
             # the trailing "\r\n" (<CR><LF>)
             prev_line = b""
-            # We take the index with us so we now where to pick up below
+            # We take the index with us so we know where to pick up below
             for i, line in enumerate(remaining_lines):
                 if self.boundary not in line:
                     write_fp.write(prev_line)

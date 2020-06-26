@@ -121,7 +121,7 @@ class CuraConnectionModule:
     def send_print(self, path):
         """Start a print in klipper"""
         if self.testing:
-            self.klippy_logger.info("Start printing {}".format(path))
+            self.klippy_logger.info("Start printing %s", path)
             self.content_manager.add_test_print(path)
             return
         self.reactor.register_async_callback(
@@ -157,7 +157,7 @@ class CuraConnectionModule:
     def queue_move(self, old_index, new_index, filename):
         self._verify_queue(old_index, filename)
         queue = self.sdcard.jobs
-        if not (0 < new_index < len(queue)):
+        if not 0 < new_index < len(queue):
             raise IndexError(
                 "Can't move print job to index {}".format(new_index))
         to_move = queue.pop(old_index)
@@ -179,7 +179,7 @@ class CuraConnectionModule:
         """
         queue = self.sdcard.jobs
         try:
-            assert(os.path.basename(queue[index].path) == filename)
+            assert os.path.basename(queue[index].path) == filename
         except (IndexError, AssertionError):
             raise QueuesDesynchronizedError()
 
