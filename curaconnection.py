@@ -85,6 +85,7 @@ class CuraConnectionModule:
         self.filament_manager = self.printer.lookup_object(
                 "filament_manager", None)
         self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
+        self.printjob_progress = self.printer.lookup_object("printjob_progress", None)
 
     def handle_ready(self):
         """Start the server only once Klipper is all up and running"""
