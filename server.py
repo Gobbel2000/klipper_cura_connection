@@ -253,7 +253,7 @@ class Handler(srv.BaseHTTPRequestHandler):
     def put_force(self, uuid):
         """
         Force a print job that requires configuration change
-        This is not called until possibly configration changes are
+        This is not called until possibly configuration changes are
         implemented.
         """
         length = int(self.headers.get("Content-Length", 0))

@@ -169,7 +169,7 @@ class CuraConnectionModule:
         """Return the thumbnail path for the specified printjob"""
         self._verify_queue(index, filename)
         return (self.sdcard.jobs[index].thumbnail_path or
-                os.path.join(self.PATH, "tux.png"))
+                os.path.join(self.PATH, "default.png"))
 
     def _verify_queue(self, index, filename):
         """
