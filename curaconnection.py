@@ -67,8 +67,9 @@ class CuraConnectionModule:
             logging.basicConfig(level=logging.DEBUG)
             handler = logging.StreamHandler()
         else:
+            now = time.strftime(logging.Formatter.default_time_format)
             with open(self.LOGFILE, "a") as fp:
-                fp.write("\n=== RESTART ===\n\n")
+                fp.write(f"\n=== RESTART {now} ===\n\n")
             handler = logging.handlers.RotatingFileHandler(
                     filename=self.LOGFILE,
                     maxBytes=4194304, # max 4 MiB per file
@@ -77,9 +78,9 @@ class CuraConnectionModule:
                 )
         handler.setFormatter(formatter)
         self.klippy_logger = logging.getLogger()
-        server_logger = logging.getLogger("root.server")
-        server_logger.propagate = False # Avoid server logs in klippy logs
-        server_logger.addHandler(handler)
+        self.server_logger = logging.getLogger("root.server")
+        self.server_logger.propagate = False # Avoid server logs in klippy logs
+        self.server_logger.addHandler(handler)
 
     def handle_connect(self):
         self.filament_manager = self.printer.lookup_object(
