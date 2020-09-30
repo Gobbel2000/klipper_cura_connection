@@ -310,7 +310,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         logger.log(level, "<%s> " + format, self.address_string(), *args)
 
 
-class Server(srv.HTTPServer, threading.Thread):
+class Server(srv.ThreadingHTTPServer, threading.Thread):
     """Wrapper class to store the module in the server and add threading"""
     def __init__(self, server_address, RequestHandler, module):
         super().__init__(server_address, RequestHandler)
