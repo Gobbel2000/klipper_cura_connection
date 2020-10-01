@@ -54,7 +54,6 @@ class MimeParser:
         """
         while True:
             line = self.fp.readline()
-            #TODO Be aware of unicode. This might need change for Python 3.
             self.bytes_left -= len(line)
             try:
                 self._parse_line(line)

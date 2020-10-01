@@ -76,7 +76,7 @@ class ContentManager:
         self.printer_status.status = "printing"
 
     def update_printers(self):
-        """Update currently loaded material (TODO) and state"""
+        """Update currently loaded material and state"""
         configuration = []
         fm = self.module.filament_manager
         loaded_materials = fm.material["loaded"]

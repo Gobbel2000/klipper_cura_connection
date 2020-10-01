@@ -31,19 +31,17 @@ class CuraConnectionModule:
 
         # Global variables
         self.VERSION = "5.2.11" # We need to disguise as Cura Connect for now
-        self.ADDRESS = self.get_ip()
         self.NAME = platform.node()
         self.SDCARD_PATH = os.path.expanduser("~/sdcard")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
         self.PATH = os.path.dirname(os.path.realpath(__file__))
         self.LOGFILE = os.path.join(self.PATH, "logs/server.log")
+        self.ADDRESS = None
+
+        self.content_manager = self.zeroconf_handler = self.server = None
 
         self.configure_logging()
         self.klippy_logger.info("Cura Connection Module initializing...")
-
-        self.content_manager = ContentManager(self)
-        self.zeroconf_handler = ZeroConfHandler(self)
-        self.server = server.get_server(self)
 
         if self.testing:
             import site
@@ -89,11 +87,34 @@ class CuraConnectionModule:
         self.printjob_progress = self.printer.lookup_object("printjob_progress", None)
 
     def handle_ready(self):
-        """Start the server only once Klipper is all up and running"""
-        self.start()
+        """
+        Now it's safe to start the server once there is a network connection
+        """
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.wait_for_network()
+
+    def wait_for_network(self):
+        """
+        This function executes every 2 seconds until a network
+        connection is established.  At that point the IPv4-Address is
+        saved and the server started.
+        """
+        try:
+            self.sock.connect(("10.255.255.255", 1))
+        except OSError:
+            self.reactor.register_callback(self.wait_for_network,
+                                           self.reactor.monotonic() + 2)
+        else:
+            self.ADDRESS = self.sock.getsockname()[0]
+            self.sock.close()
+            self.start()
 
     def start(self):
-        """Start the zeroconf service and the server in a seperate thread"""
+        """Start the zeroconf service, and the server in a seperate thread"""
+        self.content_manager = ContentManager(self)
+        self.zeroconf_handler = ZeroConfHandler(self)
+        self.server = server.get_server(self)
+
         self.content_manager.start()
         self.zeroconf_handler.start() # Non-blocking
         self.klippy_logger.debug("Cura Connection Zeroconf service started")
@@ -184,20 +205,6 @@ class CuraConnectionModule:
             assert os.path.basename(queue[index].path) == filename
         except (IndexError, AssertionError):
             raise QueuesDesynchronizedError()
-
-    @staticmethod
-    def get_ip():
-        """https://stackoverflow.com/a/28950776"""
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # doesn't even have to be reachable
-            s.connect(('10.255.255.255', 1))
-            IP = s.getsockname()[0]
-        except:
-            IP = '127.0.0.1'
-        finally:
-            s.close()
-        return IP
 
 
 def load_config(config):
