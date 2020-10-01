@@ -139,7 +139,8 @@ class CuraConnectionModule:
         Return true if there currently is an active connection.
         Also see CONNECTION_TIMEOUT
         """
-        return time.time() - self.server.last_request < self.CONNECTION_TIMEOUT
+        return (self.server is not None and
+                time.time() - self.server.last_request < self.CONNECTION_TIMEOUT)
 
     def send_print(self, path):
         """Start a print in klipper"""
