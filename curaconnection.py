@@ -93,7 +93,7 @@ class CuraConnectionModule:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.wait_for_network()
 
-    def wait_for_network(self):
+    def wait_for_network(self, eventtime=0):
         """
         This function executes every 2 seconds until a network
         connection is established.  At that point the IPv4-Address is
