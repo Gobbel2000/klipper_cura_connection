@@ -116,6 +116,7 @@ class CuraConnectionModule:
         self.server = server.get_server(self)
 
         self.content_manager.start()
+        self.zeroconf_handler.start() # Non-blocking
         self.klippy_logger.debug("Cura Connection Zeroconf service started")
         self.server.start() # Starts server thread
         self.klippy_logger.debug("Cura Connection Server started")
@@ -126,8 +127,7 @@ class CuraConnectionModule:
         can be called before start() e.g. when klipper initialization fails
         """
         self.klippy_logger.debug("Cura Connection shutting down server...")
-        if self.zeroconf_handler:
-            self.zeroconf_handler.stop()
+        self.zeroconf_handler.stop()
         self.klippy_logger.debug("Cura Connection Zeroconf shut down")
         if self.server.is_alive():
             self.server.shutdown()
