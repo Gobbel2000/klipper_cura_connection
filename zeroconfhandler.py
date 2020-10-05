@@ -21,7 +21,7 @@ class ZeroConfHandler:
         self.info = zc.ServiceInfo(
             type_=self.SERVICE_TYPE,
             name=self.module.NAME + "." + self.SERVICE_TYPE,
-            address=socket.inet_aton(self.module.ADDRESS),
+            addresses=[socket.inet_aton(self.module.ADDRESS)],
             port=80, # Default HTTP port, this is where Cura sends to
             properties=self.prop_dict,
             )
