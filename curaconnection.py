@@ -55,6 +55,7 @@ class CuraConnectionModule:
         self.printer.register_event_handler("klippy:connect", self.handle_connect)
         self.printer.register_event_handler("klippy:ready", self.handle_ready)
         self.printer.register_event_handler("klippy:shutdown", self.stop)
+        self.printer.register_event_handler("klippy:disconnect", self.stop)
 
     def configure_logging(self):
         """Add log handler based on testing"""
