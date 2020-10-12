@@ -5,6 +5,16 @@ set -e
 # The klipper cura connection directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+# Install zeroconf
+cd $DIR
+cd -P ../../../
+if [ ! -d klippy-environment ]
+then
+    echo "Errro: Klipper must be installed first, aborting installation"
+    exit 1
+fi
+klippy-environment/bin/pip3 install -q zeroconf==0.28.5
+
 echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 

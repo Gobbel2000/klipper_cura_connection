@@ -51,6 +51,16 @@ Status strings as of DevBlog2:
     * **printing** #
     * **post_print** Cooling down, stopping #
 
+### Possible BOM Numbers:
+
+BOM     |printer\_type
+--------|-------------------
+9066    |ultimaker3
+9511    |ultimaker3\_extended
+213482  |ultimaker\_s3
+9051    |ultimaker\_s5
+214475  |ultimaker\_s5
+
 
 ## TODO
 
@@ -72,13 +82,12 @@ Status strings as of DevBlog2:
 
 ## Setup
 
-`python-libcharon` needed to be installed for me so that the
-UFPWriter and UFPReader plugins of Cura can work. Otherwise
-an exception is generated when trying to send a file.
+Executing `install.sh` sets everything up as needed.
+The following steps are made:
 
-Install the latest version of zeroconf that supports Python 2:
+Install zeroconf:
 
-`pip2 install zeroconf==0.19.1`
+`pip3 install zeroconf==0.28.5`
 
 ### Port redirection
 
@@ -90,10 +99,23 @@ rules we just set are written to /etc/iptables/rule.v4.
 
 ```bash
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8008
-echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 sudo apt -y install iptables-persistent
 ```
+
+### Mjpg Streamer
+
+Install mjpg-streamer from source:
+```bash
+git clone https://github.com/jacksonliam/mjpg-streamer.git
+cd mjpg-streamer/mjpg-streamer-experimental
+make
+sudo make install
+```
+
+The systemd service mjpg\_streamer.service in this directory can be used
+to start mjpg\_streamer.
 
 
 ## Info on possible requests
@@ -110,7 +132,7 @@ Most come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
 |movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |{to\_position:0,list:queued}   |GUI                    |True
 |forcePrintJob          |PUT    |/print\_jobs/UUID              |{force:True}                   |GUI (Override)         |True
 |deletePrintJob         |DELETE |/print\_jobs/UUID              |None                           |GUI                    |True
-|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG file works)  |At job creation        |Temporary
+|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG file works)  |At job creation        |True
 |startPrintJobUpload    |POST   |/print\_jobs/                  |owner & .gcode file (MIME)     |"Print over Network"   |True
 |sendMaterials          |POST   |/materials/                    |.xml.fdm-material file (MIME)  |Sent if not on printer |True
 |stream                 |GET    |!/?action=stream               |Redirect                       |Open stream            |True
