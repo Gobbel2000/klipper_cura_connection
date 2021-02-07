@@ -301,13 +301,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         logger.error("<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
-        if (self.path == CLUSTER_API + "printers" or
-            self.path == CLUSTER_API + "print_jobs"):
-            # Put periodic requests to DEBUG
-            level = logging.DEBUG
-        else:
-            level = logging.INFO
-        logger.log(level, "<%s> " + format, self.address_string(), *args)
+        logger.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.ThreadingHTTPServer, threading.Thread):
