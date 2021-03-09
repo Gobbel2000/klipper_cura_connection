@@ -167,30 +167,25 @@ class CuraConnectionModule:
         self._verify_queue(0, filename)
         self.reactor.register_async_callback(self.sdcard.stop_printjob)
 
-    def send_queue(self, queue):
-        self.sdcard.clear_queue()
-        for q in queue[1:]:
-            self.reactor.register_async_callback(
-                    lambda e: self.sdcard.add_printjob(*q))
-
     def queue_delete(self, index, filename):
         """
         Delete the print job from the queue.
         """
+        def do_queue_delete(index, filename):
+            self.sdcard.jobs.pop(index)
+            self.sdcard.printjob_change()
         self._verify_queue(index, filename)
-        queue = self.sdcard.jobs
-        queue.pop(index)
-        self.send_queue(queue)
+        self.reactor.register_async_callback(do_queue_delete)
 
     def queue_move(self, old_index, new_index, filename):
+        def do_queue_move(old_index, new_index, filename):
+            if not 0 < new_index < len(queue):
+                raise IndexError(f"Can't move print job to index {new_index}")
+            to_move = queue.pop(old_index)
+            queue.insert(new_index, to_move)
+            self.sdcard.printjob_change()
         self._verify_queue(old_index, filename)
-        queue = self.sdcard.jobs
-        if not 0 < new_index < len(queue):
-            raise IndexError(
-                "Can't move print job to index {}".format(new_index))
-        to_move = queue.pop(old_index)
-        queue.insert(new_index, to_move)
-        self.send_queue(queue)
+        self.reactor.register_async_callback(do_queue_move)
 
     def get_thumbnail_path(self, index, filename):
         """Return the thumbnail path for the specified printjob"""
