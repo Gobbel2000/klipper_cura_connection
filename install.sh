@@ -13,7 +13,7 @@ then
     echo "Errro: Klipper must be installed first, aborting installation"
     exit 1
 fi
-klippy-environment/bin/pip3 install -q zeroconf==0.28.5
+klippy-environment/bin/pip3 install -q zeroconf==0.28.8
 
 echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections

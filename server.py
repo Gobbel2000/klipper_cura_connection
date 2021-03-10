@@ -301,20 +301,14 @@ class Handler(srv.BaseHTTPRequestHandler):
         logger.error("<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
-        if (self.path == CLUSTER_API + "printers" or
-            self.path == CLUSTER_API + "print_jobs"):
-            # Put periodic requests to DEBUG
-            level = logging.DEBUG
-        else:
-            level = logging.INFO
-        logger.log(level, "<%s> " + format, self.address_string(), *args)
+        logger.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.ThreadingHTTPServer, threading.Thread):
     """Wrapper class to store the module in the server and add threading"""
     def __init__(self, server_address, RequestHandler, module):
         super().__init__(server_address, RequestHandler)
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name="Server-Thread")
         self.module = module
         self.last_request = 0 # Time of last request in seconds since epoch
 

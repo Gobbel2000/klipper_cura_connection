@@ -86,6 +86,7 @@ class CuraConnectionModule:
                 "filament_manager", None)
         self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
         self.print_stats = self.printer.lookup_object("print_stats", None)
+        self.metadata = self.printer.lookup_object("gcode_metadata", None)
 
     def handle_ready(self):
         """
@@ -190,8 +191,10 @@ class CuraConnectionModule:
     def get_thumbnail_path(self, index, filename):
         """Return the thumbnail path for the specified printjob"""
         self._verify_queue(index, filename)
-        return (self.sdcard.jobs[index].thumbnail_path or
-                os.path.join(self.PATH, "default.png"))
+        path = self.sdcard.jobs[index].md.get_thumbnial_path()
+        if not path or not os.exists(path):
+            path = os.path.join(self.PATH, "default.png")
+        return path
 
     def _verify_queue(self, index, filename):
         """
