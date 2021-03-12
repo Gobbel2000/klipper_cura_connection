@@ -42,26 +42,26 @@ class ContentManager:
                 version=version,
             ))
 
-    def get_print_job_status(self, path):
+    def get_print_job_status(self, klippy_pj):
         """Return a print job model for the given path"""
-        metadata = self.module.metadata.get_metadata(path)
-        time = metadata.get_time() or 0
+        md = klippy_pj.md
+        time = md.get_time() or 0
         configuration = []
-        for i in range(metadata.get_extruder_count()):
+        for i in range(md.get_extruder_count()):
             configuration.append(ClusterPrintCoreConfiguration(
                 extruder_index=i,
                 material={
-                    "guid": metadata.get_material_guid(i),
-                    "brand": metadata.get_material_brand(i),
-                    "color": metadata.get_material_info("./m:metadata/m:name/m:color", i),
-                    "material": metadata.get_material_type(i),
+                    "guid": md.get_material_guid(i),
+                    "brand": md.get_material_brand(i),
+                    "color": md.get_material_info("./m:metadata/m:name/m:color", i),
+                    "material": md.get_material_type(i),
                 }
             ))
         return ClusterPrintJobStatus(
             created_at=self.get_time_str(),
             force=False,
             machine_variant="Ultimaker 3",
-            name=os.path.basename(path),
+            name=os.path.basename(klippy_pj.path),
             started=False,
             # One of: wait_cleanup, finished, sent_to_printer, pre_print,
             # pausing, paused, resuming, queued, printing, post_print
@@ -70,7 +70,7 @@ class ContentManager:
             time_total=time,
             time_elapsed=0,
             uuid=self.new_uuid(),
-            configuration=self.printer_status.configuration,
+            configuration=configuration,
             constraints=[],
         )
 
@@ -132,7 +132,7 @@ class ContentManager:
                     print_job = self.print_jobs.pop(j)
                     break
             if print_job is None: # Newly added print job
-                new_print_jobs.append(self.get_print_job_status(klippy_pj.path))
+                new_print_jobs.append(self.get_print_job_status(klippy_pj))
             else:
                 new_print_jobs.append(print_job)
         self.print_jobs = new_print_jobs
@@ -143,7 +143,8 @@ class ContentManager:
             remaining = self.module.print_stats.get_print_time_prediction()[0]
             self.print_jobs[0].time_elapsed = int(elapsed)
             self.print_jobs[0].assigned_to = self.printer_status.uuid
-            self.print_jobs[0].time_total = int(elapsed + (1 if remaining is None else remaining))
+            self.print_jobs[0].time_total = int(elapsed +
+                    (1 if remaining is None else remaining))
 
             # State
             if current.state == "stopping":
