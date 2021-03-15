@@ -32,7 +32,7 @@ class CuraConnectionModule:
         # Global variables
         self.VERSION = "5.2.11" # We need to disguise as Cura Connect for now
         self.NAME = platform.node()
-        self.SDCARD_PATH = os.path.expanduser("~/sdcard")
+        self.SDCARD_PATH = os.path.expanduser("~/Files")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
         self.PATH = os.path.dirname(os.path.realpath(__file__))
         self.LOGFILE = os.path.join(self.PATH, "logs/server.log")
