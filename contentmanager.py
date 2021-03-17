@@ -55,7 +55,8 @@ class ContentManager:
                     "brand": md.get_material_brand(i),
                     "color": md.get_material_info("./m:metadata/m:name/m:color", i),
                     "material": md.get_material_type(i),
-                }
+                },
+                print_core_id="AA 0.4",
             ))
         return ClusterPrintJobStatus(
             created_at=self.get_time_str(),
@@ -108,6 +109,7 @@ class ContentManager:
                     "color": color,
                     "material": material,
                 },
+                print_core_id="AA 0.4",
             ))
         self.printer_status.configuration = configuration
         if self.module.testing:
