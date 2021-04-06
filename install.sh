@@ -10,7 +10,7 @@ cd $DIR
 cd -P ../../../
 if [ ! -d klippy-environment ]
 then
-    echo "Errro: Klipper must be installed first, aborting installation"
+    echo "Error: Klipper must be installed first, aborting installation"
     exit 1
 fi
 klippy-environment/bin/pip3 install -q zeroconf==0.28.8
@@ -34,6 +34,7 @@ then
     rm -rf mjpg-streamer
 fi
 
+#TODO Use stable commit or release
 git clone https://github.com/jacksonliam/mjpg-streamer.git
 cd mjpg-streamer/mjpg-streamer-experimental
 make

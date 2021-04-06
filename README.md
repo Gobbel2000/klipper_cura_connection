@@ -1,140 +1,59 @@
-# Klipper Cura connection
+# Klipper Cura Connection
 
-A Klipper module that enables a network connection with Cura.
+Klipper module that allows network connection with the Ultimaker Cura slicer
+software.
 
+This is meant to be used in [D4SK/klipperui](https://github.com/D4SK/klipperui).
+When running, this printer can be added as a networked printer in Cura, showing
+the status of the current print and any queued print jobs. Print jobs can be
+sent from Cura to a connected printer using the _Print over Network_ button that
+appears after slicing.
 
-## Good to know
-
-Id, key, name are all synonymously used for the name property
-set as name in the zeroconf property dictionary.
-
-Device refers to detected, usable printers, Machine refers
-to printers added in Cura.
-
-### Great Developer Blogs
-
-1) [GCode](https://community.ultimaker.com/topic/15555-inside-the-ultimaker-3-day-1-gcode/)
-2) [Remote access (part 1)](https://community.ultimaker.com/topic/15574-inside-the-ultimaker-3-day-2-remote-access-part-1/)
-3) [Remote access (part 2)](https://community.ultimaker.com/topic/15604-inside-the-ultimaker-3-day-3-remote-access-part-2/)
-4) [Electronics](https://community.ultimaker.com/topic/15649-inside-the-ultimaker-3-day-4-electronics/)
-5) [Developer mode & Linux/Systemd](https://community.ultimaker.com/topic/15664-inside-the-ultimaker-3-day-5-developer-mode-linuxsystemd/)
-6) [Active leveling](https://community.ultimaker.com/topic/15687-inside-the-ultimaker-3-day-6-active-leveling/)
-
-### Printer
-
-Status strings as of DevBlog2:
-
-* **idle**
-* **printing**
-* **error**
-* **maintenance**
-* **booting**
-
-### Print Jobs
-
-* assigned\_to != None to be "active"
-* setPrintJobState sends one of "print", "pause", "abort"
-* timeTotal is a continuously updated estimate
-* All status strings as of
-    `KlipperNetworkPrinting/resources/qml/MonitorPrintJobProgressBar.qml`
-    and DevBlog2 (indicaded by #)
-    * **wait_cleanup** stopped (aborted or finished)
-    * **finished**
-    * **sent_to_printer**
-    * **pre_print** Active leveling?, Heating #
-    * **aborting** Unused by Cura Connect, used by Cura
-    * **aborted** see above
-    * **pausing** #
-    * **paused** #
-    * **resuming** #
-    * **queued** needed to show in Cura queue
-    * **printing** #
-    * **post_print** Cooling down, stopping #
-
-### Possible BOM Numbers:
-
-BOM     |printer\_type
---------|-------------------
-9066    |ultimaker3
-9511    |ultimaker3\_extended
-213482  |ultimaker\_s3
-9051    |ultimaker\_s5
-214475  |ultimaker\_s5
+When a camera is installed, the live camera stream can be viewed within Cura.
 
 
-## TODO
+## Features
 
-* Figure out if it is really necessary to disguise as an Ultimaker3  
-    Otherwise custom sizes will need to be set manually.
-
-
-## What's happening in Cura?
-
-* The Output plugin detects networked printers via zeroconf
-* They get checked for some values in the zeroconf property dict
-* When the user adds that device, a new machine (Stack) is created
-* Further communication happens via the IP address on HTTP
-* On Startup missing _material_ xml files are sent to the printer
-* Every 2 seconds _\_update()_ is called on all device objects.
-    This continuously requests _printers_ and _print_jobs_ status data
-* When clicking _Print over network_ the file is sent in a multipart POST request.
+* Send print jobs to your printer directly from Cura.
+* Queue multiple print jobs to be printed after one another.
+* Monitor what's currently printing and its progress.
+* Pause or abort the current print job.
+* Reorder the queue.
+* Get information about the material currently loaded by the printer.
+* View a live stream of a camera installed in the printer.
 
 
-## Setup
+## Security considerations
 
-Executing `install.sh` sets everything up as needed.
-The following steps are made:
+When using this piece of software you should be aware of what your printer will
+be exposed to. The networking doesn't implement any encryption or
+authentication measures, meaning anyone in your network can use Cura to control
+the printer the same way you can. This shouldn't be an issue if the printer is
+located in your private home network that only trusted persons have access to.
+But be careful when connecting the printer to a public network, someone could
+make your printer execute dangerous G-Codes.
 
-Install zeroconf:
-
-`pip3 install zeroconf==0.28.5`
-
-### Port redirection
-
-Root privileges are required to listen to port 80, the default HTTP port.
-Because of that we redirect packets to 8080 and listen to that instead.
-We then make these persistent with installing iptables-persistent.
-With the configurations set first the installation is automatic and the
-rules we just set are written to /etc/iptables/rule.v4.
-
-```bash
-sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8008
-echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo debconf-set-selections
-echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
-sudo apt -y install iptables-persistent
-```
-
-### Mjpg Streamer
-
-Install mjpg-streamer from source:
-```bash
-git clone https://github.com/jacksonliam/mjpg-streamer.git
-cd mjpg-streamer/mjpg-streamer-experimental
-make
-sudo make install
-```
-
-The systemd service mjpg\_streamer.service in this directory can be used
-to start mjpg\_streamer.
+Communication is done via port 80 (and port 8080 for the camera stream). If you
+set up your router to forward that port to the printer, literally everyone can
+get control over it, so don't do that, ever. If you wish to control the printer
+from outside your network, setting up a VPN could be a safe option.
 
 
-## Info on possible requests
+## Connecting with Cura
 
-Most come from `KlipperNetworkPrinting/src/Network/ClusterApiClient.py`
-
-|Name                   |Type   |URL (/cluster-api/v1 if not !) |Data (sent or requested)       |Requested at           |Implemented
-|-----------------------|-------|-------------------------------|-------------------------------|-----------------------|-----------
-|getSystem              |GET    |!/api/v1/system                |PrinterSystemStatus            |At manual connection   |False
-|getMaterials           |GET    |/materials                     |[ClusterMaterial]              |At startup             |True
-|getPrinters            |GET    |/printers                      |[ClusterPrinterStatus]         |Periodically           |True
-|getPrintJobs           |GET    |/print\_jobs                   |[ClusterPrintJobStatus]        |Periodically           |True
-|setPrintJobState       |PUT    |/print\_jobs/UUID/action       |{action:(pause\|print\|abort)} |GUI                    |True
-|movePrintJobToTop      |POST   |/print\_jobs/UUID/action/move  |{to\_position:0,list:queued}   |GUI                    |True
-|forcePrintJob          |PUT    |/print\_jobs/UUID              |{force:True}                   |GUI (Override)         |True
-|deletePrintJob         |DELETE |/print\_jobs/UUID              |None                           |GUI                    |True
-|getPrintJobPreviewImage|GET    |/print\_jobs/UUID/preview\_image|Image bytes (PNG file works)  |At job creation        |True
-|startPrintJobUpload    |POST   |/print\_jobs/                  |owner & .gcode file (MIME)     |"Print over Network"   |True
-|sendMaterials          |POST   |/materials/                    |.xml.fdm-material file (MIME)  |Sent if not on printer |True
-|stream                 |GET    |!/?action=stream               |Redirect                       |Open stream            |True
-|snapshot               |GET    |!/?action=snapshot             |Redirect                       |None                   |True
-|?                      |GET    |!/print\_jobs                  |?                              |Browser view           |False
+* Make sure this server is up and running
+* Add the printer using the _Add Printer_ dialogue. It should pop as a
+  networked printer. The options _Add printer by IP_ and _Add cloud printer_
+  are not supported.
+* Because we make use of the interface for the Ultimaker 3 printer, your
+  printer will always show up as an Ultimaker 3. You will need to change
+  some settings to match your printer. This is done under _Machine Settings_
+  when the appropriate printer is selected in the Printer preferences. The
+  printer must be activated in order to access its settings. The folowing
+  values are most important to be changed:
+    * Change G-Code flavor to **Marlin**
+    * Number of extruders
+    * Adjust the _Compatible material diameter_ for each extruder. Ultimaker
+      printers use 2.85mm nozzles, but most printers need **1.75mm**.
+    * Printer size (X, Y and Z)
+    * Set the start and end gcodes as needed
