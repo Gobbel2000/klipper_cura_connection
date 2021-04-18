@@ -13,11 +13,16 @@ import os
 import platform
 import socket
 import time
+from os.path import join
 
 from .contentmanager import ContentManager
 from .custom_exceptions import QueuesDesynchronizedError
 from . import server
 from .zeroconfhandler import ZeroConfHandler
+
+klipper_dir = dirname(dirname(dirname(kgui_dir)))
+site.addsitedir(join(p.klipper_dir, "klippy/extras/")) # gcode_metadata
+import gcode_metadata
 
 
 class CuraConnectionModule:
@@ -43,19 +48,11 @@ class CuraConnectionModule:
         self.configure_logging()
         self.klippy_logger.info("Cura Connection Module initializing...")
 
-        if self.testing:
-            import site
-            site.addsitedir(os.path.dirname(self.PATH))
-            import filament_manager
-            self.filament_manager = filament_manager.load_config(None)
-            return
-        self.config = config
-        self.printer = config.get_printer()
-        self.reactor = self.printer.get_reactor()
-        self.printer.register_event_handler("klippy:connect", self.handle_connect)
-        self.printer.register_event_handler("klippy:ready", self.handle_ready)
-        self.printer.register_event_handler("klippy:shutdown", self.stop)
-        self.printer.register_event_handler("klippy:disconnect", self.stop)
+        self.reactor = config.get_reactor()
+        self.metadata = gcode_metadata.load_config(config)
+        self.reactor.register_event_handler("klippy:connect", self.handle_connect)
+        self.reactor.register_event_handler("klippy:ready", self.handle_ready)
+        self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
 
     def configure_logging(self):
         """Add log handler based on testing"""
@@ -80,13 +77,6 @@ class CuraConnectionModule:
         self.server_logger = logging.getLogger("root.server")
         self.server_logger.propagate = False # Avoid server logs in klippy logs
         self.server_logger.addHandler(handler)
-
-    def handle_connect(self):
-        self.filament_manager = self.printer.lookup_object(
-                "filament_manager", None)
-        self.sdcard = self.printer.lookup_object("virtual_sdcard", None)
-        self.print_stats = self.printer.lookup_object("print_stats", None)
-        self.metadata = self.printer.lookup_object("gcode_metadata", None)
 
     def handle_ready(self):
         """
@@ -123,7 +113,7 @@ class CuraConnectionModule:
         self.server.start() # Starts server thread
         self.klippy_logger.debug("Cura Connection Server started")
 
-    def stop(self, *args):
+    def handle_disconnect(self, *args):
         """
         This might take a little while, be patient
         can be called before start() e.g. when klipper initialization fails
@@ -138,6 +128,7 @@ class CuraConnectionModule:
             self.server.shutdown()
             self.server.join()
             self.klippy_logger.debug("Cura Connection Server shut down")
+        self.reactor.cb(self.reactor.close_process, process='klipper_cura_connection')
 
     def is_connected(self):
         """
@@ -153,61 +144,42 @@ class CuraConnectionModule:
             self.klippy_logger.info("Start printing %s", path)
             self.content_manager.add_test_print(path)
             return
-        self.reactor.register_async_callback(
-                lambda e: self.sdcard.add_printjob(path))
+        self.reactor.cb(self.add_prinjob, path, process='printer')
+    
+    @staticmethod
+    def add_prinjob(e, printer, path):
+        printer.objects['virtual_sdcard'].add_prinjob(path)
 
-    def resume_print(self, filename):
-        self._verify_queue(0, filename)
-        self.reactor.register_async_callback(self.sdcard.resume_printjob)
+    @staticmethod
+    def resume_printjob(e, printer):
+        printer.objects['virtual_sdcard'].resume_printjob()
 
-    def pause_print(self, filename):
-        self._verify_queue(0, filename)
-        self.reactor.register_async_callback(self.sdcard.pause_printjob)
+    @staticmethod
+    def pause_printjob(e, printer):
+        printer.objects['virtual_sdcard'].pause_printjob()
 
-    def stop_print(self, filename):
-        self._verify_queue(0, filename)
-        self.reactor.register_async_callback(self.sdcard.stop_printjob)
+    @staticmethod
+    def stop_printjob(e, printer):
+        printer.objects['virtual_sdcard'].stop_printjob()
 
-    def queue_delete(self, index, filename):
+    @staticmethod
+    def queue_delete(e, printer, filename):
         """
         Delete the print job from the queue.
         """
-        def do_queue_delete(index, filename):
-            self.sdcard.jobs.pop(index)
-            self.sdcard.printjob_change()
-        self._verify_queue(index, filename)
-        self.reactor.register_async_callback(do_queue_delete)
-
-    def queue_move(self, old_index, new_index, filename):
-        def do_queue_move(old_index, new_index, filename):
-            if not 0 < new_index < len(queue):
-                raise IndexError(f"Can't move print job to index {new_index}")
-            to_move = queue.pop(old_index)
-            queue.insert(new_index, to_move)
-            self.sdcard.printjob_change()
-        self._verify_queue(old_index, filename)
-        self.reactor.register_async_callback(do_queue_move)
+        printer.objects['virtual_sdcard'].remove_printjob(index, path)
+    
+    @staticmethod
+    def queue_move(e, printer, old_index, new_index, path):
+        printer.objects['virtual_sdcard'].move_printjob(old_index, new_index-old_index, path)
 
     def get_thumbnail_path(self, index, filename):
-        """Return the thumbnail path for the specified printjob"""
+        """ Return the thumbnail path for the specified printjob """
         self._verify_queue(index, filename)
-        path = self.sdcard.jobs[index].md.get_thumbnial_path()
+        path = self.metadata.get_metadata(self.jobs[index]).get_thumbnial_path()
         if not path or not os.exists(path):
             path = os.path.join(self.PATH, "default.png")
         return path
-
-    def _verify_queue(self, index, filename):
-        """
-        Raise QueuesDesynchronizedError if filename is not at index in queue.
-        The index is checked as well as the filename in order to detect
-        changes in the queue that have not yet been updated in the
-        content manager.
-        """
-        queue = self.sdcard.jobs
-        try:
-            assert os.path.basename(queue[index].path) == filename
-        except (IndexError, AssertionError):
-            raise QueuesDesynchronizedError()
 
 
 def load_config(config):

@@ -91,6 +91,8 @@ class ContentManager:
 
     def update_printers(self):
         """Update currently loaded material and state"""
+        pass
+        """
         configuration = []
         fm = self.module.filament_manager
         loaded_materials = fm.material["loaded"]
@@ -114,14 +116,17 @@ class ContentManager:
         self.printer_status.configuration = configuration
         if self.module.testing:
             return
-        jobs = self.module.sdcard.jobs
+        jobs = self.module.jobs
         if jobs and jobs[0].state in {"printing", "paused", "pausing", "stopping"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
+        """
 
     def update_print_jobs(self):
-        """Read queue, Update status, elapsed time"""
+        """Read queue, Update status, elapsed time""" 
+        pass
+        """
         s = self.module.sdcard.get_status()
 
         # Update self.print_jobs with the queue
@@ -160,6 +165,7 @@ class ContentManager:
 
             if current.state == "printing":
                 self.print_jobs[0].started = True
+        """
 
     @staticmethod
     def new_uuid():
