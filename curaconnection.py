@@ -151,19 +151,19 @@ class CuraConnectionModule:
                 time.time() - self.server.last_request < self.CONNECTION_TIMEOUT)
 
     @staticmethod
-    def add_prinjob(e, printer, path):
+    def add_print(e, printer, path):
         printer.objects['virtual_sdcard'].add_prinjob(path)
 
     @staticmethod
-    def resume_printjob(e, printer, uuid):
+    def resume_print(e, printer, uuid):
         printer.objects['virtual_sdcard'].resume_printjob()
 
     @staticmethod
-    def pause_printjob(e, printer, uuid):
+    def pause_print(e, printer, uuid):
         printer.objects['virtual_sdcard'].pause_printjob()
 
     @staticmethod
-    def stop_printjob(e, printer, uuid):
+    def stop_print(e, printer, uuid):
         printer.objects['virtual_sdcard'].stop_printjob()
 
     @staticmethod
@@ -178,7 +178,7 @@ class CuraConnectionModule:
         return printer.objects['virtual_sdcard'].move_printjob(index, uuid, move)
 
     def get_thumbnail_path(self, index, filename):
-        """Return the thumbnail path for the specified printjob"""
+        """Return the thumbnail path for the specified print"""
         path = self.sdcard.jobs[index].md.get_thumbnial_path()
         if not path or not os.exists(path):
             path = os.path.join(self.PATH, "default.png")

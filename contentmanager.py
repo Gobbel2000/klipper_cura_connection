@@ -28,10 +28,10 @@ class ContentManager:
         )
         self.print_jobs = [] # type: [ClusterPrintJobStatus]
         self.materials = [] # type: [ClusterMaterial]
-        self.materials = self.reactor.cb(update_materials, process='printer', wait=True)
+        self.materials = self.reactor.cb(obtain_material, process='printer', wait=True)
 
     @staticmethod
-    def update_materials(e, printer):
+    def obtain_material(e, printer):
         """
         Add to the list of local materials.
         Must be called later so that filament_manager is available.
@@ -40,7 +40,7 @@ class ContentManager:
         return [ClusterMaterial(guid=guid, version=int(fm.get_info(guid, "./m:metadata/m:version"))) \
             for guid in fm.guid_to_path]
 
-    def get_print_job_status(self, klippy_pj):
+    def create_cluster_print_job(self, klippy_pj):
         """ Return a print job model for the given path """
         md = self.gcode_metadata(klippy_pj.path)
         configuration = []
@@ -77,7 +77,7 @@ class ContentManager:
         Testing only: add a print job outside of klipper and pretend
         we're printing.
         """
-        self.print_jobs.append(self.get_print_job_status(path))
+        self.print_jobs.append(self.create_cluster_print_job(path))
         self.print_jobs[0].status = "printing"
         self.print_jobs[0].started = True
         self.print_jobs[0].time_total = 10000
@@ -86,7 +86,7 @@ class ContentManager:
         self.printer_status.status = "printing"
 
     @staticmethod
-    def get_material(e, printer):
+    def obtain_loaded_material(e, printer):
         loaded_materials = fm.material["loaded"]
         for m in loaded_materials:
             if m['guid']:
@@ -98,6 +98,7 @@ class ContentManager:
 
     def update_printers(self):
         """ Update currently loaded material and state """
+        loaded_materials = self.reactor.cb(self.obtain_loaded_material, wait=True)
         configuration = [ClusterPrintCoreConfiguration(
             extruder_index=i, material=material, print_core_id="AA 0.4")
             for i, material in enumerate(loaded_materials)]
@@ -111,7 +112,7 @@ class ContentManager:
             self.printer_status.status = "idle"
 
     @staticmethod
-    def get_print_jobs(e, printer):
+    def obtain_print_jobs(e, printer):
         jobs = printer.objects['virtual_sdcard'].get_status()['jobs']
         remaining = printer.objects['print_stats'].get_print_time_prediction()[0]
         elapsed = jobs[0].get_printed_time() if jobs else 0
@@ -120,7 +121,7 @@ class ContentManager:
     def update_print_jobs(self):
         """ Read queue, Update status, elapsed time """ 
         # Update self.print_jobs with the queue
-        status, jobs, elapsed = self.reactor.cb(self.get_print_jobs, process='printer', wait=True)
+        status, jobs, elapsed = self.reactor.cb(self.obtain_print_jobs, process='printer', wait=True)
         new_print_jobs = []
         for klippy_pj in jobs:
             print_job = None
@@ -130,7 +131,7 @@ class ContentManager:
                     print_job = self.print_jobs.pop(j)
                     break
             if print_job is None: # Newly added print job
-                new_print_jobs.append(self.get_print_job_status(klippy_pj))
+                new_print_jobs.append(self.create_cluster_print_job(klippy_pj))
             else:
                 new_print_jobs.append(print_job)
         self.print_jobs = new_print_jobs
@@ -182,7 +183,7 @@ class ContentManager:
         return [self.printer_status.serialize()]
     def get_print_jobs(self):
         if not self.module.testing:
-            self.reactor.cb(update_print_jobs)
+            self.update_print_jobs()
         return [m.serialize() for m in self.print_jobs]
     def get_materials(self):
         return [m.serialize() for m in self.materials]

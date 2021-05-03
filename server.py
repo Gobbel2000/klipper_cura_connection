@@ -153,7 +153,7 @@ class Handler(srv.BaseHTTPRequestHandler):
             #    if name == "owner":
             #        owner = msg.get_payload().strip()
             for path in paths:
-                self.reactor.cb(self.module.add_printjob, path)
+                self.reactor.cb(self.module.add_print, path)
             self.send_response(HTTPStatus.OK)
             self.end_headers()
 
@@ -230,11 +230,11 @@ class Handler(srv.BaseHTTPRequestHandler):
         else:
             try:
                 if action == "print":
-                    self.reactor.cb(self.module.resume_printjob, uuid)
+                    self.reactor.cb(self.module.resume_print, uuid)
                 elif action == "pause":
-                    self.reactor.cb(self.module.pause_printjob, uuid)
+                    self.reactor.cb(self.module.pause_print, uuid)
                 elif action == "abort":
-                    self.reactor.cb(self.module.stop_printjob, uuid)
+                    self.reactor.cb(self.module.stop_print, uuid)
                 else:
                     self.send_error(HTTPStatus.BAD_REQUEST,
                             "Unknown action: " + str(action))
