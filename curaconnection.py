@@ -74,8 +74,8 @@ class CuraConnectionModule:
                     delay=True, # Open file only once needed
                 )
         handler.setFormatter(formatter)
-        self.klippy_logger = logging.getLogger("root.server")
-        self.server_logger = logging.getLogger("root.server")
+        self.klippy_logger = logging.getLogger()
+        self.server_logger = logging.getLogger()
         self.server_logger.propagate = False # Avoid server logs in klippy logs
         self.server_logger.addHandler(handler)
 

@@ -102,6 +102,7 @@ class ContentManager:
         """ Update currently loaded material and state """
         configuration = []
         loaded_materials = self.reactor.cb(self.obtain_loaded_material, wait=True)
+        self.update_print_jobs()
         for i, material in enumerate(loaded_materials):
             if material['guid'] is None:
                 continue
@@ -118,8 +119,7 @@ class ContentManager:
         self.printer_status.configuration = configuration
         if self.module.testing:
             return
-        jobs = self.module.sdcard.jobs
-        if jobs and jobs[0].state in {"printing", "paused", "pausing", "stopping"}:
+        if self.module.jobs and self.module.jobs[0].state in {"printing", "paused", "pausing", "aborting"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
