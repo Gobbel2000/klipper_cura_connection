@@ -6,7 +6,6 @@ import re
 import threading
 import time
 
-from .custom_exceptions import QueuesDesynchronizedError
 from .mimeparser import MimeParser
 
 PRINTER_API = "/api/v1/"
@@ -29,6 +28,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def __init__(self, request, client_address, server):
         self.module = server.module
+        self.reactor = server.reactor
         self.content_manager = self.module.content_manager
         self._size = None # For logging GET requests
         super().__init__(request, client_address, server)
@@ -119,9 +119,6 @@ class Handler(srv.BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "image/png")
                 self.end_headers()
                 self.wfile.write(image_data)
-            except QueuesDesynchronizedError:
-                self.send_error(HTTPStatus.CONFLICT,
-                        "Queue order has changed")
             except IOError:
                 self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
                         "Failed to open preview image at " + thumbnail_path)
@@ -155,7 +152,8 @@ class Handler(srv.BaseHTTPRequestHandler):
             #    name = msg.get_param("name", header="Content-Disposition")
             #    if name == "owner":
             #        owner = msg.get_payload().strip()
-            self.module.send_print(paths[0])
+            for path in paths:
+                self.reactor.cb(self.module.add_printjob, path)
             self.send_response(HTTPStatus.OK)
             self.end_headers()
 
@@ -184,7 +182,7 @@ class Handler(srv.BaseHTTPRequestHandler):
         except ValueError:
             self.send_error(HTTPStatus.BAD_REQUEST, "Failed to read JSON")
             return
-        old_index, print_job = self.content_manager.uuid_to_print_job(uuid)
+        old_index, _ = self.content_manager.uuid_to_print_job(uuid)
         new_index = data.get("to_position")
         if not print_job:
             self.send_error(HTTPStatus.NOT_FOUND, "Print job not in Queue")
@@ -192,15 +190,11 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST,
                     "Unexpected JSON content: " + rdata)
         else:
-            try:
-                self.module.queue_move(old_index, new_index, print_job.name)
-            except IndexError as e:
-                self.send_error(HTTPStatus.BAD_REQUEST, str(e))
-            except QueuesDesynchronizedError:
-                self.send_error(HTTPStatus.CONFLICT, "Queue order has changed")
-            else:
+            if self.reactor.cb(self.do_queue_move, old_index, new_index-old_index, uuid, wait=True):
                 self.send_response(HTTPStatus.OK)
                 self.end_headers()
+            else:
+                self.send_error(HTTPStatus.CONFLICT, "Queue order has changed")
 
     def delete_print_job(self, uuid):
         """Delete print job with uuid from the queue"""
@@ -208,13 +202,11 @@ class Handler(srv.BaseHTTPRequestHandler):
         if not print_job:
             self.send_error(HTTPStatus.NOT_FOUND, "Print job not in queue")
         else:
-            try:
-                self.module.queue_delete(index, print_job.name)
-            except QueuesDesynchronizedError:
-                self.send_error(HTTPStatus.CONFLICT, "Queue order has changed")
-            else:
+            if self.reactor.cb(self.module.queue_delete, index, uuid, wait=True):
                 self.send_response(HTTPStatus.OK)
                 self.end_headers()
+            else:
+                self.send_error(HTTPStatus.CONFLICT, "Queue order has changed")
 
     def put_action(self, uuid):
         """
@@ -238,17 +230,14 @@ class Handler(srv.BaseHTTPRequestHandler):
         else:
             try:
                 if action == "print":
-                    self.module.resume_print(print_job.name)
+                    self.reactor.cb(self.module.resume_printjob, uuid)
                 elif action == "pause":
-                    self.module.pause_print(print_job.name)
+                    self.reactor.cb(self.module.pause_printjob, uuid)
                 elif action == "abort":
-                    self.module.stop_print(print_job.name)
+                    self.reactor.cb(self.module.stop_printjob, uuid)
                 else:
                     self.send_error(HTTPStatus.BAD_REQUEST,
                             "Unknown action: " + str(action))
-            except QueuesDesynchronizedError:
-                self.send_error(HTTPStatus.CONFLICT,
-                        "Queue order has changed")
 
     def put_force(self, uuid):
         """

@@ -16,12 +16,11 @@ import time
 from os.path import join
 
 from .contentmanager import ContentManager
-from .custom_exceptions import QueuesDesynchronizedError
 from . import server
 from .zeroconfhandler import ZeroConfHandler
 
 klipper_dir = dirname(dirname(dirname(kgui_dir)))
-site.addsitedir(join(p.klipper_dir, "klippy/extras/")) # gcode_metadata
+site.addsitedir(join(p.klipper_dir, "klippy/parallel_extras/")) # gcode_metadata
 import gcode_metadata
 
 
@@ -85,6 +84,22 @@ class CuraConnectionModule:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.wait_for_network()
 
+        self.test()
+        self.test()
+    @staticmethod
+    def get_temp(e, printer):
+        if 'heaters' in printer.objects:
+            temp = {}
+            for name, heater in printer.objects['heaters'].heaters.items():
+                current, target = heater.get_temp(e)
+                temp[name] = [target, current]
+            return temp
+    def test(self, dt):
+        logging.info(f"start test {dt}")
+        start_time = self.reactor.monotonic() 
+        result = self.reactor.cb(self.get_temp, process='printer', wait='true')
+        logging.info(f"test {dt} got restult {result} in {self.reactor.monotonic() - start_time} seconds")
+
     def wait_for_network(self, eventtime=0):
         """
         This function executes every 2 seconds until a network
@@ -103,13 +118,11 @@ class CuraConnectionModule:
 
     def start(self):
         """Start the zeroconf service, and the server in a seperate thread"""
-        self.content_manager = ContentManager(self)
+        self.content_manager = ContentManager(self, self.reactor)
         self.zeroconf_handler = ZeroConfHandler(self)
         self.server = server.get_server(self)
 
-        self.content_manager.start()
         self.zeroconf_handler.start() # Non-blocking
-        self.klippy_logger.debug("Cura Connection Zeroconf service started")
         self.server.start() # Starts server thread
         self.klippy_logger.debug("Cura Connection Server started")
 
@@ -121,14 +134,13 @@ class CuraConnectionModule:
         if self.server is None:
             # stop() is called before start()
             return
-        self.klippy_logger.debug("Cura Connection shutting down server...")
         self.zeroconf_handler.stop()
         self.klippy_logger.debug("Cura Connection Zeroconf shut down")
         if self.server.is_alive():
             self.server.shutdown()
             self.server.join()
             self.klippy_logger.debug("Cura Connection Server shut down")
-        self.reactor.cb(self.reactor.close_process, process='klipper_cura_connection')
+        self.reactor.cb(self.reactor.end, process='klipper_cura_connection')
 
     def is_connected(self):
         """
@@ -138,45 +150,36 @@ class CuraConnectionModule:
         return (self.server is not None and
                 time.time() - self.server.last_request < self.CONNECTION_TIMEOUT)
 
-    def send_print(self, path):
-        """Start a print in klipper"""
-        if self.testing:
-            self.klippy_logger.info("Start printing %s", path)
-            self.content_manager.add_test_print(path)
-            return
-        self.reactor.cb(self.add_prinjob, path, process='printer')
-    
     @staticmethod
     def add_prinjob(e, printer, path):
         printer.objects['virtual_sdcard'].add_prinjob(path)
 
     @staticmethod
-    def resume_printjob(e, printer):
+    def resume_printjob(e, printer, uuid):
         printer.objects['virtual_sdcard'].resume_printjob()
 
     @staticmethod
-    def pause_printjob(e, printer):
+    def pause_printjob(e, printer, uuid):
         printer.objects['virtual_sdcard'].pause_printjob()
 
     @staticmethod
-    def stop_printjob(e, printer):
+    def stop_printjob(e, printer, uuid):
         printer.objects['virtual_sdcard'].stop_printjob()
 
     @staticmethod
-    def queue_delete(e, printer, filename):
+    def queue_delete(e, printer, uuid):
         """
         Delete the print job from the queue.
         """
-        printer.objects['virtual_sdcard'].remove_printjob(index, path)
-    
+        return printer.objects['virtual_sdcard'].remove_printjob(index, uuid)
+
     @staticmethod
-    def queue_move(e, printer, old_index, new_index, path):
-        printer.objects['virtual_sdcard'].move_printjob(old_index, new_index-old_index, path)
+    def queue_move(e, printer, index, uuid, move):
+        return printer.objects['virtual_sdcard'].move_printjob(index, uuid, move)
 
     def get_thumbnail_path(self, index, filename):
-        """ Return the thumbnail path for the specified printjob """
-        self._verify_queue(index, filename)
-        path = self.metadata.get_metadata(self.jobs[index]).get_thumbnial_path()
+        """Return the thumbnail path for the specified printjob"""
+        path = self.sdcard.jobs[index].md.get_thumbnial_path()
         if not path or not os.exists(path):
             path = os.path.join(self.PATH, "default.png")
         return path

@@ -11,7 +11,7 @@ from .Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
 class ContentManager:
 
-    def __init__(self, module):
+    def __init__(self, module, reactor):
         self.module = module
 
         self.printer_status = ClusterPrinterStatus(
@@ -28,24 +28,21 @@ class ContentManager:
         )
         self.print_jobs = [] # type: [ClusterPrintJobStatus]
         self.materials = [] # type: [ClusterMaterial]
+        self.materials = self.reactor.cb(update_materials, process='printer', wait=True)
 
-    def start(self):
+    @staticmethod
+    def update_materials(e, printer):
         """
         Add to the list of local materials.
         Must be called later so that filament_manager is available.
         """
-        for guid in self.module.filament_manager.guid_to_path:
-            version = int(self.module.filament_manager.get_info(guid,
-                    "./m:metadata/m:version"))
-            self.materials.append(ClusterMaterial(
-                guid=guid,
-                version=version,
-            ))
+        fm = printer.objects['filament_manager']
+        return [ClusterMaterial(guid=guid, version=int(fm.get_info(guid, "./m:metadata/m:version"))) \
+            for guid in fm.guid_to_path]
 
     def get_print_job_status(self, klippy_pj):
-        """Return a print job model for the given path"""
-        md = klippy_pj.md
-        time = md.get_time() or 0
+        """ Return a print job model for the given path """
+        md = self.gcode_metadata(klippy_pj.path)
         configuration = []
         for i in range(md.get_extruder_count()):
             configuration.append(ClusterPrintCoreConfiguration(
@@ -68,9 +65,9 @@ class ContentManager:
             # pausing, paused, resuming, queued, printing, post_print
             # (possibly also aborted and aborting)
             status="queued",
-            time_total=time,
+            time_total=md.get_time() or 0,
             time_elapsed=0,
-            uuid=self.new_uuid(),
+            uuid=klippy_pj.uuid,
             configuration=configuration,
             constraints=[],
         )
@@ -86,52 +83,46 @@ class ContentManager:
         self.print_jobs[0].time_total = 10000
         self.print_jobs[0].time_elapsed += 2
         self.print_jobs[0].assigned_to = self.printer_status.uuid
-
         self.printer_status.status = "printing"
 
-    def update_printers(self):
-        """Update currently loaded material and state"""
-        pass
-        """
-        configuration = []
-        fm = self.module.filament_manager
+    @staticmethod
+    def get_material(e, printer):
         loaded_materials = fm.material["loaded"]
-        for i, material in enumerate(loaded_materials):
-            if material['guid'] is None:
-                continue
-            guid = material['guid']
-            brand = fm.get_info(guid, "./m:metadata/m:name/m:brand")
-            color = fm.get_info(guid, "./m:metadata/m:name/m:color")
-            material = fm.get_info(guid, "./m:metadata/m:name/m:material")
-            configuration.append(ClusterPrintCoreConfiguration(
-                extruder_index=i,
-                material={
-                    "guid": guid,
-                    "brand": brand,
-                    "color": color,
-                    "material": material,
-                },
-                print_core_id="AA 0.4",
-            ))
+        for m in loaded_materials:
+            if m['guid']:
+                loaded_materials.update({
+                    'brand': fm.get_info(m['guid'], "./m:metadata/m:name/m:brand"),
+                    'color': fm.get_info(m['guid'], "./m:metadata/m:name/m:color"),
+                    'material': fm.get_info(m['guid'], "./m:metadata/m:name/m:material")})
+        return loaded_materials
+
+    def update_printers(self):
+        """ Update currently loaded material and state """
+        configuration = [ClusterPrintCoreConfiguration(
+            extruder_index=i, material=material, print_core_id="AA 0.4")
+            for i, material in enumerate(loaded_materials)]
+        configuration.append()
         self.printer_status.configuration = configuration
         if self.module.testing:
             return
-        jobs = self.module.jobs
-        if jobs and jobs[0].state in {"printing", "paused", "pausing", "stopping"}:
+        if self.module.jobs and self.module.jobs[0].state in {"printing", "paused", "pausing", "aborting"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
-        """
+
+    @staticmethod
+    def get_print_jobs(e, printer):
+        jobs = printer.objects['virtual_sdcard'].get_status()['jobs']
+        remaining = printer.objects['print_stats'].get_print_time_prediction()[0]
+        elapsed = jobs[0].get_printed_time() if jobs else 0
+        return jobs, remaining, elapsed
 
     def update_print_jobs(self):
-        """Read queue, Update status, elapsed time""" 
-        pass
-        """
-        s = self.module.sdcard.get_status()
-
+        """ Read queue, Update status, elapsed time """ 
         # Update self.print_jobs with the queue
+        status, jobs, elapsed = self.reactor.cb(self.get_print_jobs, process='printer', wait=True)
         new_print_jobs = []
-        for klippy_pj in s["printjobs"]:
+        for klippy_pj in jobs:
             print_job = None
             # Find first cura print job with the same name
             for j, cura_pj in enumerate(self.print_jobs):
@@ -144,28 +135,17 @@ class ContentManager:
                 new_print_jobs.append(print_job)
         self.print_jobs = new_print_jobs
 
-        if self.print_jobs: # Update first print job if there is one
-            current = s["printjobs"][0]
-            elapsed = current.get_printed_time()
-            remaining = self.module.print_stats.get_print_time_prediction()[0]
+        # Update first print job if there is one
+        if self.print_jobs:
             self.print_jobs[0].time_elapsed = int(elapsed)
             self.print_jobs[0].assigned_to = self.printer_status.uuid
             self.print_jobs[0].time_total = int(elapsed +
                     (1 if remaining is None else remaining))
 
             # State
-            if current.state == "stopping":
-                self.print_jobs[0].status = "aborting"
-            elif current.state == "stopped":
-                self.print_jobs[0].status = "aborted"
-            elif current.state == "done":
-                self.print_jobs[0].status = "finished"
-            else:
-                self.print_jobs[0].status = current.state
-
-            if current.state == "printing":
+            self.print_jobs[0].status = jobs[0].state
+            if jobs[0].state == "printing":
                 self.print_jobs[0].started = True
-        """
 
     @staticmethod
     def new_uuid():
@@ -202,7 +182,7 @@ class ContentManager:
         return [self.printer_status.serialize()]
     def get_print_jobs(self):
         if not self.module.testing:
-            self.update_print_jobs()
+            self.reactor.cb(update_print_jobs)
         return [m.serialize() for m in self.print_jobs]
     def get_materials(self):
         return [m.serialize() for m in self.materials]
