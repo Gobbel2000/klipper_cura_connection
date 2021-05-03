@@ -190,7 +190,8 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST,
                     "Unexpected JSON content: " + rdata)
         else:
-            if self.reactor.cb(self.do_queue_move, old_index, new_index-old_index, uuid, wait=True):
+            if self.reactor.cb(
+                self.do_queue_move, old_index, new_index-old_index, uuid, wait=True):
                 self.send_response(HTTPStatus.OK)
                 self.end_headers()
             else:
@@ -228,16 +229,14 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST,
                     "Can only operate on current print job. Got " + str(index))
         else:
-            try:
-                if action == "print":
-                    self.reactor.cb(self.module.resume_print, uuid)
-                elif action == "pause":
-                    self.reactor.cb(self.module.pause_print, uuid)
-                elif action == "abort":
-                    self.reactor.cb(self.module.stop_print, uuid)
-                else:
-                    self.send_error(HTTPStatus.BAD_REQUEST,
-                            "Unknown action: " + str(action))
+            if action == "print":
+                self.reactor.cb(self.module.resume_print, uuid)
+            elif action == "pause":
+                self.reactor.cb(self.module.pause_print, uuid)
+            elif action == "abort":
+                self.reactor.cb(self.module.stop_print, uuid)
+            else:
+                self.send_error(HTTPStatus.BAD_REQUEST, "Unknown action: " + str(action))
 
     def put_force(self, uuid):
         """

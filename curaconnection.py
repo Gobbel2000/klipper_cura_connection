@@ -13,14 +13,15 @@ import os
 import platform
 import socket
 import time
-from os.path import join
+import site
+from os.path import join, dirname
 
 from .contentmanager import ContentManager
 from . import server
 from .zeroconfhandler import ZeroConfHandler
 
-klipper_dir = dirname(dirname(dirname(kgui_dir)))
-site.addsitedir(join(p.klipper_dir, "klippy/parallel_extras/")) # gcode_metadata
+klippy_dir = dirname(dirname(dirname(__file__)))
+site.addsitedir(join(klippy_dir, "extras/")) # gcode_metadata
 import gcode_metadata
 
 
@@ -52,6 +53,7 @@ class CuraConnectionModule:
         self.reactor.register_event_handler("klippy:connect", self.handle_connect)
         self.reactor.register_event_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
+        self.klippy_logger.info("Cura Connection Module initialized...")
 
     def configure_logging(self):
         """Add log handler based on testing"""
@@ -72,7 +74,7 @@ class CuraConnectionModule:
                     delay=True, # Open file only once needed
                 )
         handler.setFormatter(formatter)
-        self.klippy_logger = logging.getLogger()
+        self.klippy_logger = logging.getLogger("root.server")
         self.server_logger = logging.getLogger("root.server")
         self.server_logger.propagate = False # Avoid server logs in klippy logs
         self.server_logger.addHandler(handler)
@@ -81,6 +83,7 @@ class CuraConnectionModule:
         """
         Now it's safe to start the server once there is a network connection
         """
+        logging.info("handle ready")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.wait_for_network()
 
@@ -96,7 +99,7 @@ class CuraConnectionModule:
             return temp
     def test(self, dt):
         logging.info(f"start test {dt}")
-        start_time = self.reactor.monotonic() 
+        start_time = self.reactor.monotonic()
         result = self.reactor.cb(self.get_temp, process='printer', wait='true')
         logging.info(f"test {dt} got restult {result} in {self.reactor.monotonic() - start_time} seconds")
 
@@ -118,7 +121,7 @@ class CuraConnectionModule:
 
     def start(self):
         """Start the zeroconf service, and the server in a seperate thread"""
-        self.content_manager = ContentManager(self, self.reactor)
+        self.content_manager = ContentManager(self)
         self.zeroconf_handler = ZeroConfHandler(self)
         self.server = server.get_server(self)
 
@@ -167,7 +170,7 @@ class CuraConnectionModule:
         printer.objects['virtual_sdcard'].stop_printjob()
 
     @staticmethod
-    def queue_delete(e, printer, uuid):
+    def queue_delete(e, printer, index, uuid):
         """
         Delete the print job from the queue.
         """

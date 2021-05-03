@@ -11,8 +11,9 @@ from .Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
 class ContentManager:
 
-    def __init__(self, module, reactor):
+    def __init__(self, module):
         self.module = module
+        self.reactor = module.reactor
 
         self.printer_status = ClusterPrinterStatus(
             enabled=True,
@@ -37,7 +38,8 @@ class ContentManager:
         Must be called later so that filament_manager is available.
         """
         fm = printer.objects['filament_manager']
-        return [ClusterMaterial(guid=guid, version=int(fm.get_info(guid, "./m:metadata/m:version"))) \
+        return [ClusterMaterial(
+            guid=guid, version=int(fm.get_info(guid, "./m:metadata/m:version")))
             for guid in fm.guid_to_path]
 
     def create_cluster_print_job(self, klippy_pj):
@@ -98,15 +100,26 @@ class ContentManager:
 
     def update_printers(self):
         """ Update currently loaded material and state """
+        configuration = []
         loaded_materials = self.reactor.cb(self.obtain_loaded_material, wait=True)
-        configuration = [ClusterPrintCoreConfiguration(
-            extruder_index=i, material=material, print_core_id="AA 0.4")
-            for i, material in enumerate(loaded_materials)]
-        configuration.append()
+        for i, material in enumerate(loaded_materials):
+            if material['guid'] is None:
+                continue
+            configuration.append(ClusterPrintCoreConfiguration(
+                extruder_index=i,
+                material={
+                    "guid": material['guid'],
+                    "brand": material['brand'],
+                    "color": material['color'],
+                    "material": material['material'],
+                },
+                print_core_id="AA 0.4",
+            ))
         self.printer_status.configuration = configuration
         if self.module.testing:
             return
-        if self.module.jobs and self.module.jobs[0].state in {"printing", "paused", "pausing", "aborting"}:
+        jobs = self.module.sdcard.jobs
+        if jobs and jobs[0].state in {"printing", "paused", "pausing", "stopping"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
@@ -119,9 +132,10 @@ class ContentManager:
         return jobs, remaining, elapsed
 
     def update_print_jobs(self):
-        """ Read queue, Update status, elapsed time """ 
+        """ Read queue, Update status, elapsed time """
         # Update self.print_jobs with the queue
-        status, jobs, elapsed = self.reactor.cb(self.obtain_print_jobs, process='printer', wait=True)
+        status, jobs, elapsed = self.reactor.cb(
+            self.obtain_print_jobs, process='printer', wait=True)
         new_print_jobs = []
         for klippy_pj in jobs:
             print_job = None
