@@ -14,6 +14,7 @@ import platform
 import socket
 import time
 import site
+import sys
 from os.path import join, dirname
 
 from .contentmanager import ContentManager
@@ -46,14 +47,24 @@ class CuraConnectionModule:
         self.content_manager = self.zeroconf_handler = self.server = None
 
         self.configure_logging()
-        self.klippy_logger.info("Cura Connection Module initializing...")
 
         self.reactor = config.get_reactor()
         self.metadata = gcode_metadata.load_config(config)
-        self.reactor.register_event_handler("klippy:connect", self.handle_connect)
-        self.reactor.register_event_handler("klippy:ready", self.handle_ready)
+        self.reactor.register_evejklnt_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
-        self.klippy_logger.info("Cura Connection Module initialized...")
+        self.server_logger.info("Cura Connection Module initialized...")
+
+
+        self.do_test()
+    @staticmethod
+    def get_test(e, printer):
+        return 777
+    def do_test(self):
+        self.server_logger.info(f"start test")
+        start_time = self.reactor.monotonic()
+        result = self.reactor.cb(self.get_test, wait='true')
+        self.server_logger.info(f"got restult {result} in {self.reactor.monotonic() - start_time} seconds")
+
 
     def configure_logging(self):
         """Add log handler based on testing"""
@@ -64,6 +75,7 @@ class CuraConnectionModule:
             logging.basicConfig(level=logging.DEBUG)
             handler = logging.StreamHandler()
         else:
+            logging.basicConfig(level=logging.DEBUG)
             now = time.strftime(logging.Formatter.default_time_format)
             with open(self.LOGFILE, "a") as fp:
                 fp.write(f"\n=== RESTART {now} ===\n\n")
@@ -74,10 +86,9 @@ class CuraConnectionModule:
                     delay=True, # Open file only once needed
                 )
         handler.setFormatter(formatter)
-        self.klippy_logger = logging.getLogger()
-        self.server_logger = logging.getLogger()
-        self.server_logger.propagate = False # Avoid server logs in klippy logs
+        self.server_logger = logging.getLogger("root.server_logger")
         self.server_logger.addHandler(handler)
+        sys.excepthook.append(lambda exc_type, exc_value, tb: self.server_logger.exception(str(exc_value)))
 
     def handle_ready(self):
         """
@@ -87,34 +98,20 @@ class CuraConnectionModule:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.wait_for_network()
 
-        self.test()
-        self.test()
-    @staticmethod
-    def get_temp(e, printer):
-        if 'heaters' in printer.objects:
-            temp = {}
-            for name, heater in printer.objects['heaters'].heaters.items():
-                current, target = heater.get_temp(e)
-                temp[name] = [target, current]
-            return temp
-    def test(self, dt):
-        logging.info(f"start test {dt}")
-        start_time = self.reactor.monotonic()
-        result = self.reactor.cb(self.get_temp, process='printer', wait='true')
-        logging.info(f"test {dt} got restult {result} in {self.reactor.monotonic() - start_time} seconds")
-
     def wait_for_network(self, eventtime=0):
         """
         This function executes every 2 seconds until a network
         connection is established.  At that point the IPv4-Address is
         saved and the server started.
         """
+        logging.info("waiting for network")
         try:
             self.sock.connect(("10.255.255.255", 1))
         except OSError:
             self.reactor.register_callback(self.wait_for_network,
                                            self.reactor.monotonic() + 2)
         else:
+            logging.info("got network")
             self.ADDRESS = self.sock.getsockname()[0]
             self.sock.close()
             self.start()
@@ -127,7 +124,7 @@ class CuraConnectionModule:
 
         self.zeroconf_handler.start() # Non-blocking
         self.server.start() # Starts server thread
-        self.klippy_logger.debug("Cura Connection Server started")
+        self.server_logger.debug("Cura Connection Server started")
 
     def handle_disconnect(self, *args):
         """
@@ -138,12 +135,12 @@ class CuraConnectionModule:
             # stop() is called before start()
             return
         self.zeroconf_handler.stop()
-        self.klippy_logger.debug("Cura Connection Zeroconf shut down")
+        self.server_logger.debug("Cura Connection Zeroconf shut down")
         if self.server.is_alive():
             self.server.shutdown()
             self.server.join()
-            self.klippy_logger.debug("Cura Connection Server shut down")
-        self.reactor.cb(self.reactor.end, process='klipper_cura_connection')
+            self.server_logger.debug("Cura Connection Server shut down")
+        self.reactor.register_async_callback(self.reactor.end)
 
     def is_connected(self):
         """
@@ -171,9 +168,7 @@ class CuraConnectionModule:
 
     @staticmethod
     def queue_delete(e, printer, index, uuid):
-        """
-        Delete the print job from the queue.
-        """
+        """Delete the print job from the queue"""
         return printer.objects['virtual_sdcard'].remove_printjob(index, uuid)
 
     @staticmethod

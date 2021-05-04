@@ -29,7 +29,7 @@ class ContentManager:
         )
         self.print_jobs = [] # type: [ClusterPrintJobStatus]
         self.materials = [] # type: [ClusterMaterial]
-        self.materials = self.reactor.cb(obtain_material, process='printer', wait=True)
+        self.materials = self.reactor.cb(self.obtain_material, process='printer', wait=True)
 
     @staticmethod
     def obtain_material(e, printer):
@@ -134,7 +134,7 @@ class ContentManager:
     def update_print_jobs(self):
         """ Read queue, Update status, elapsed time """
         # Update self.print_jobs with the queue
-        status, jobs, elapsed = self.reactor.cb(
+        jobs, remaining, elapsed = self.reactor.cb(
             self.obtain_print_jobs, process='printer', wait=True)
         new_print_jobs = []
         for klippy_pj in jobs:
