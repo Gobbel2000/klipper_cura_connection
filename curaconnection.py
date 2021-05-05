@@ -17,6 +17,37 @@ import site
 import sys
 from os.path import join, dirname
 
+    
+def configure_logging(testing=False):
+    """Add log handler based on testing"""
+    formatter = logging.Formatter(
+            fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
+    if testing:
+        # Log to console in testing mode
+        logging.basicConfig(level=logging.DEBUG)
+        handler = logging.StreamHandler()
+    else:
+        logger = logging.getLogger("cura_connection")
+        now = time.strftime(logging.Formatter.default_time_format)
+        with open(LOGFILE, "a") as fp:
+            fp.write(f"\n=== RESTART {now} ===\n\n")
+        handler = logging.handlers.RotatingFileHandler(
+                filename=LOGFILE,
+                maxBytes=4194304, # max 4 MiB per file
+                backupCount=3, # up to 4 files total
+                delay=True, # Open file only once needed
+            )
+
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        logging.root = logger
+        sys.excepthook = (lambda e_type, e_value, tb: logging.exception(str(e_value)))
+
+PATH = os.path.dirname(os.path.realpath(__file__))
+LOGFILE = os.path.join(PATH, "logs/server.log")
+configure_logging()
+
 from .contentmanager import ContentManager
 from . import server
 from .zeroconfhandler import ZeroConfHandler
@@ -40,55 +71,15 @@ class CuraConnectionModule:
         self.NAME = platform.node()
         self.SDCARD_PATH = os.path.expanduser("~/Files")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
-        self.PATH = os.path.dirname(os.path.realpath(__file__))
-        self.LOGFILE = os.path.join(self.PATH, "logs/server.log")
+
         self.ADDRESS = None
-
         self.content_manager = self.zeroconf_handler = self.server = None
-
-        self.configure_logging()
 
         self.reactor = config.get_reactor()
         self.metadata = gcode_metadata.load_config(config)
-        self.reactor.register_evejklnt_handler("klippy:ready", self.handle_ready)
+        self.reactor.register_event_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
-        self.server_logger.info("Cura Connection Module initialized...")
-
-
-        self.do_test()
-    @staticmethod
-    def get_test(e, printer):
-        return 777
-    def do_test(self):
-        self.server_logger.info(f"start test")
-        start_time = self.reactor.monotonic()
-        result = self.reactor.cb(self.get_test, wait='true')
-        self.server_logger.info(f"got restult {result} in {self.reactor.monotonic() - start_time} seconds")
-
-
-    def configure_logging(self):
-        """Add log handler based on testing"""
-        formatter = logging.Formatter(
-                fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
-        if self.testing:
-            # Log to console in testing mode
-            logging.basicConfig(level=logging.DEBUG)
-            handler = logging.StreamHandler()
-        else:
-            logging.basicConfig(level=logging.DEBUG)
-            now = time.strftime(logging.Formatter.default_time_format)
-            with open(self.LOGFILE, "a") as fp:
-                fp.write(f"\n=== RESTART {now} ===\n\n")
-            handler = logging.handlers.RotatingFileHandler(
-                    filename=self.LOGFILE,
-                    maxBytes=4194304, # max 4 MiB per file
-                    backupCount=3, # up to 4 files total
-                    delay=True, # Open file only once needed
-                )
-        handler.setFormatter(formatter)
-        self.server_logger = logging.getLogger("root.server_logger")
-        self.server_logger.addHandler(handler)
-        sys.excepthook.append(lambda exc_type, exc_value, tb: self.server_logger.exception(str(exc_value)))
+        logging.info("Cura Connection Module initialized...")
 
     def handle_ready(self):
         """
@@ -124,7 +115,7 @@ class CuraConnectionModule:
 
         self.zeroconf_handler.start() # Non-blocking
         self.server.start() # Starts server thread
-        self.server_logger.debug("Cura Connection Server started")
+        logging.debug("Cura Connection Server started")
 
     def handle_disconnect(self, *args):
         """
@@ -135,11 +126,11 @@ class CuraConnectionModule:
             # stop() is called before start()
             return
         self.zeroconf_handler.stop()
-        self.server_logger.debug("Cura Connection Zeroconf shut down")
+        logging.debug("Cura Connection Zeroconf shut down")
         if self.server.is_alive():
             self.server.shutdown()
             self.server.join()
-            self.server_logger.debug("Cura Connection Server shut down")
+            logging.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
 
     def is_connected(self):

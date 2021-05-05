@@ -12,7 +12,6 @@ PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
 MJPG_STREAMER_PORT = 8080
 
-logger = logging.getLogger("root.server")
 
 class Handler(srv.BaseHTTPRequestHandler):
 
@@ -286,10 +285,10 @@ class Handler(srv.BaseHTTPRequestHandler):
         # Overwrite format string. Default is "code %d, message %s"
         if format == "code %d, message %s":
             format = "Errorcode %d: %s"
-        logger.error("<%s> " + format, self.address_string(), *args)
+        logging.error("<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
-        logger.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
+        logging.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.ThreadingHTTPServer, threading.Thread):
