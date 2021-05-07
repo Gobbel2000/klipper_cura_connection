@@ -17,36 +17,32 @@ import site
 import sys
 from os.path import join, dirname
 
-    
-def configure_logging(testing=False):
-    """Add log handler based on testing"""
-    formatter = logging.Formatter(
-            fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
-    if testing:
-        # Log to console in testing mode
-        logging.basicConfig(level=logging.DEBUG)
-        handler = logging.StreamHandler()
-    else:
-        logger = logging.getLogger("cura_connection")
-        now = time.strftime(logging.Formatter.default_time_format)
-        with open(LOGFILE, "a") as fp:
-            fp.write(f"\n=== RESTART {now} ===\n\n")
-        handler = logging.handlers.RotatingFileHandler(
-                filename=LOGFILE,
-                maxBytes=4194304, # max 4 MiB per file
-                backupCount=3, # up to 4 files total
-                delay=True, # Open file only once needed
-            )
-
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
-        logging.root = logger
-        sys.excepthook = (lambda e_type, e_value, tb: logging.exception(str(e_value)))
-
 PATH = os.path.dirname(os.path.realpath(__file__))
 LOGFILE = os.path.join(PATH, "logs/server.log")
-configure_logging()
+testing = False
+
+"""Add log handler based on testing"""
+formatter = logging.Formatter(fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
+if testing:
+    # Log to console in testing mode
+    logging.basicConfig(level=logging.DEBUG)
+    handler = logging.StreamHandler()
+else:
+    logger = logging.getLogger("cura_connection")
+    now = time.strftime(logging.Formatter.default_time_format)
+    with open(LOGFILE, "a") as fp:
+        fp.write(f"\n=== RESTART {now} ===\n\n")
+    handler = logging.handlers.RotatingFileHandler(
+            filename=LOGFILE,
+            maxBytes=4194304, # max 4 MiB per file
+            backupCount=3, # up to 4 files total
+            delay=True, # Open file only once needed
+            )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    logging.root = logger
+    sys.excepthook = (lambda e_type, e_value, tb: logging.exception(str(e_value))) #TODO make work
 
 from .contentmanager import ContentManager
 from . import server
@@ -77,6 +73,10 @@ class CuraConnectionModule:
 
         self.reactor = config.get_reactor()
         self.metadata = gcode_metadata.load_config(config)
+        # These are loaded a bit late, they sometimes miss the klippy:connect event
+        # klippy:ready works since it only occurs after kguis handle_connect reports back
+        self.reactor.cb(self.load_object, "filament_manager")
+        self.reactor.cb(self.load_object, "print_history")
         self.reactor.register_event_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
         logging.info("Cura Connection Module initialized...")
@@ -85,7 +85,6 @@ class CuraConnectionModule:
         """
         Now it's safe to start the server once there is a network connection
         """
-        logging.info("handle ready")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.wait_for_network()
 
@@ -95,7 +94,6 @@ class CuraConnectionModule:
         connection is established.  At that point the IPv4-Address is
         saved and the server started.
         """
-        logging.info("waiting for network")
         try:
             self.sock.connect(("10.255.255.255", 1))
         except OSError:
@@ -173,6 +171,10 @@ class CuraConnectionModule:
             path = os.path.join(self.PATH, "default.png")
         return path
 
+    @staticmethod
+    def load_object(e, printer, object_name):
+        klipper_config = printer.objects['configfile'].read_main_config()
+        printer.load_object(klipper_config, object_name)
 
 def load_config(config):
     """Entry point, called by Klippy"""
