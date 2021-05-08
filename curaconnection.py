@@ -19,30 +19,22 @@ from os.path import join, dirname
 
 PATH = os.path.dirname(os.path.realpath(__file__))
 LOGFILE = os.path.join(PATH, "logs/server.log")
-testing = False
 
-"""Add log handler based on testing"""
 formatter = logging.Formatter(fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
-if testing:
-    # Log to console in testing mode
-    logging.basicConfig(level=logging.DEBUG)
-    handler = logging.StreamHandler()
-else:
-    logger = logging.getLogger("cura_connection")
-    now = time.strftime(logging.Formatter.default_time_format)
-    with open(LOGFILE, "a") as fp:
-        fp.write(f"\n=== RESTART {now} ===\n\n")
-    handler = logging.handlers.RotatingFileHandler(
+logger = logging.getLogger("cura_connection")
+now = time.strftime(logging.Formatter.default_time_format)
+with open(LOGFILE, "a") as fp:
+   fp.write(f"\n=== RESTART {now} ===\n\n")
+handler = logging.handlers.RotatingFileHandler(
             filename=LOGFILE,
             maxBytes=4194304, # max 4 MiB per file
             backupCount=3, # up to 4 files total
             delay=True, # Open file only once needed
             )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-    logging.root = logger
-    sys.excepthook = (lambda e_type, e_value, tb: logging.exception(str(e_value))) #TODO make work
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+logging.root = logger
 
 from .contentmanager import ContentManager
 from . import server
