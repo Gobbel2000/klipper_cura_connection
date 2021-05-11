@@ -8,6 +8,9 @@ import time
 
 from .mimeparser import MimeParser
 
+logger = logging.getLogger("klipper_cura_connection")
+threading.excepthook = lambda tp, val, tb: logger.exception("Exception in thread")
+
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
 MJPG_STREAMER_PORT = 8080
@@ -27,7 +30,7 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     def __init__(self, request, client_address, server):
         self.module = server.module
-        self.reactor = server.reactor
+        self.reactor = server.module.reactor
         self.content_manager = self.module.content_manager
         self._size = None # For logging GET requests
         super().__init__(request, client_address, server)
@@ -228,14 +231,17 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST,
                     "Can only operate on current print job. Got " + str(index))
         else:
+            res = True
             if action == "print":
-                self.reactor.cb(self.module.resume_print, uuid)
+                res = self.reactor.cb(self.module.resume_print, uuid, wait=True)
             elif action == "pause":
-                self.reactor.cb(self.module.pause_print, uuid)
+                res = self.reactor.cb(self.module.pause_print, uuid, wait=True)
             elif action == "abort":
-                self.reactor.cb(self.module.stop_print, uuid)
+                res = self.reactor.cb(self.module.stop_print, uuid, wait=True)
             else:
                 self.send_error(HTTPStatus.BAD_REQUEST, "Unknown action: " + str(action))
+            if not res:
+                self.send_error(HTTPStatus.CONFLICT, "Failed to " + str(action))
 
     def put_force(self, uuid):
         """
@@ -285,10 +291,10 @@ class Handler(srv.BaseHTTPRequestHandler):
         # Overwrite format string. Default is "code %d, message %s"
         if format == "code %d, message %s":
             format = "Errorcode %d: %s"
-        logging.error("<%s> " + format, self.address_string(), *args)
+        logger.error("<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
-        logging.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
+        logger.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.ThreadingHTTPServer, threading.Thread):

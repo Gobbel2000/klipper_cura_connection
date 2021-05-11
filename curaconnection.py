@@ -20,21 +20,18 @@ from os.path import join, dirname
 PATH = os.path.dirname(os.path.realpath(__file__))
 LOGFILE = os.path.join(PATH, "logs/server.log")
 
+logger = logging.getLogger("klipper_cura_connection")
 formatter = logging.Formatter(fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
-logger = logging.getLogger("cura_connection")
-now = time.strftime(logging.Formatter.default_time_format)
-with open(LOGFILE, "a") as fp:
-   fp.write(f"\n=== RESTART {now} ===\n\n")
 handler = logging.handlers.RotatingFileHandler(
-            filename=LOGFILE,
-            maxBytes=4194304, # max 4 MiB per file
-            backupCount=3, # up to 4 files total
-            delay=True, # Open file only once needed
-            )
+    filename=LOGFILE,
+    maxBytes=4194304, # max 4 MiB per file
+    backupCount=3, # up to 4 files total
+    delay=True, # Open file only once needed
+    )
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
-logging.root = logger
+logger.propagate = False
 
 from .contentmanager import ContentManager
 from . import server
@@ -59,10 +56,11 @@ class CuraConnectionModule:
         self.NAME = platform.node()
         self.SDCARD_PATH = os.path.expanduser("~/Files")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
-
         self.ADDRESS = None
-        self.content_manager = self.zeroconf_handler = self.server = None
 
+        self.content_manager = None
+        self.zeroconf_handler = None
+        self.server = None
         self.reactor = config.get_reactor()
         self.metadata = gcode_metadata.load_config(config)
         # These are loaded a bit late, they sometimes miss the klippy:connect event
@@ -71,7 +69,7 @@ class CuraConnectionModule:
         self.reactor.cb(self.load_object, "print_history")
         self.reactor.register_event_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
-        logging.info("Cura Connection Module initialized...")
+        logger.info("\n\n=== Cura Connection Module initialized ===\n")
 
     def handle_ready(self):
         """
@@ -92,7 +90,6 @@ class CuraConnectionModule:
             self.reactor.register_callback(self.wait_for_network,
                                            self.reactor.monotonic() + 2)
         else:
-            logging.info("got network")
             self.ADDRESS = self.sock.getsockname()[0]
             self.sock.close()
             self.start()
@@ -105,7 +102,7 @@ class CuraConnectionModule:
 
         self.zeroconf_handler.start() # Non-blocking
         self.server.start() # Starts server thread
-        logging.debug("Cura Connection Server started")
+        logger.debug("Cura Connection Server started")
 
     def handle_disconnect(self, *args):
         """
@@ -116,11 +113,11 @@ class CuraConnectionModule:
             # stop() is called before start()
             return
         self.zeroconf_handler.stop()
-        logging.debug("Cura Connection Zeroconf shut down")
+        logger.debug("Cura Connection Zeroconf shut down")
         if self.server.is_alive():
             self.server.shutdown()
             self.server.join()
-            logging.debug("Cura Connection Server shut down")
+            logger.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
 
     def is_connected(self):
@@ -133,19 +130,19 @@ class CuraConnectionModule:
 
     @staticmethod
     def add_print(e, printer, path):
-        printer.objects['virtual_sdcard'].add_prinjob(path)
+        return printer.objects['virtual_sdcard'].add_printjob(path)
 
     @staticmethod
     def resume_print(e, printer, uuid):
-        printer.objects['virtual_sdcard'].resume_printjob()
+        return printer.objects['virtual_sdcard'].resume_printjob()
 
     @staticmethod
     def pause_print(e, printer, uuid):
-        printer.objects['virtual_sdcard'].pause_printjob()
+        return printer.objects['virtual_sdcard'].pause_printjob()
 
     @staticmethod
     def stop_print(e, printer, uuid):
-        printer.objects['virtual_sdcard'].stop_printjob()
+        return printer.objects['virtual_sdcard'].stop_printjob()
 
     @staticmethod
     def queue_delete(e, printer, index, uuid):
@@ -158,8 +155,9 @@ class CuraConnectionModule:
 
     def get_thumbnail_path(self, index, filename):
         """Return the thumbnail path for the specified print"""
-        path = self.sdcard.jobs[index].md.get_thumbnial_path()
-        if not path or not os.exists(path):
+        md = self.metadata.get_metadata(self.content_manager.klippy_jobs[index].path)
+        path = md.get_thumbnail_path()
+        if not path or not os.path.exists(path):
             path = os.path.join(self.PATH, "default.png")
         return path
 
