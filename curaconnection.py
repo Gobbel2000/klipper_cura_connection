@@ -130,28 +130,28 @@ class CuraConnectionModule:
 
     @staticmethod
     def add_print(e, printer, path):
-        return printer.objects['virtual_sdcard'].add_printjob(path)
+        return printer.objects['virtual_sdcard'].add_print(path)
 
     @staticmethod
     def resume_print(e, printer, uuid):
-        return printer.objects['virtual_sdcard'].resume_printjob()
+        return printer.objects['virtual_sdcard'].resume_print()
 
     @staticmethod
     def pause_print(e, printer, uuid):
-        return printer.objects['virtual_sdcard'].pause_printjob()
+        return printer.objects['virtual_sdcard'].pause_print()
 
     @staticmethod
     def stop_print(e, printer, uuid):
-        return printer.objects['virtual_sdcard'].stop_printjob()
+        return printer.objects['virtual_sdcard'].stop_print()
 
     @staticmethod
     def queue_delete(e, printer, index, uuid):
         """Delete the print job from the queue"""
-        return printer.objects['virtual_sdcard'].remove_printjob(index, uuid)
+        return printer.objects['virtual_sdcard'].remove_print(index, uuid)
 
     @staticmethod
     def queue_move(e, printer, index, uuid, move):
-        return printer.objects['virtual_sdcard'].move_printjob(index, uuid, move)
+        return printer.objects['virtual_sdcard'].move_print(index, uuid, move)
 
     def get_thumbnail_path(self, index, filename):
         """Return the thumbnail path for the specified print"""
