@@ -170,10 +170,14 @@ class Handler(srv.BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR,
                     "Parser failed: " + str(e))
         else:
-            self.module.filament_manager.read_single_file(paths[0])
+            self.reactor.cb(self.read_material_file, paths[0])
             # Reply is checked specifically for 200
             self.send_response(HTTPStatus.OK)
             self.end_headers()
+
+    @staticmethod
+    def read_material_file(e, printer, path):
+        printer.objects['filament_manager'].read_single_file(path)
 
     def post_move_to_top(self, uuid):
         """Move print job with uuid to the top of the queue"""
