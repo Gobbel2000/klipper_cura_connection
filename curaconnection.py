@@ -17,6 +17,7 @@ import site
 import sys
 from os.path import join, dirname
 
+os.nice(15)
 PATH = os.path.dirname(os.path.realpath(__file__))
 LOGFILE = os.path.join(PATH, "logs/server.log")
 
