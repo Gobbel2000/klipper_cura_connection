@@ -1,6 +1,6 @@
 import email
 import logging
-import os.path
+import os
 
 logger = logging.getLogger("root.server")
 
@@ -110,13 +110,16 @@ class MimeParser:
         buffer but do not belong to the file (everything past the first
         occurance of boundary).
         """
+        # Write to this first to avoid the file browser crashing
+        temp_path = self.fpath + ".part"
+
         logger.debug("Writing file: %s", self.fpath)
         self.written_files.append(self.fpath)
 
         # Use two buffers in case the boundary gets cut in half
         buf1 = self._safe_read()
         buf2 = self._safe_read()
-        with open(self.fpath, "wb") as write_fp:
+        with open(temp_path, "wb") as write_fp:
             while self.boundary not in buf1 + buf2:
                 write_fp.write(buf1)
                 buf1 = buf2
@@ -140,6 +143,9 @@ class MimeParser:
                     # Now write the last line, but stripped
                     write_fp.write(prev_line.rstrip(b"\r\n"))
                     break
+        # Rename the written file from [fpath].part to [fpath]
+        os.rename(temp_path, self.fpath)
+
         # Parse all other lines left in the buffer normally
         # When reaching the end, StopIteration will be propagated up to parse()
         for line in remaining_lines[i:]:
