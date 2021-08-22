@@ -14,7 +14,6 @@ import platform
 import socket
 import time
 import site
-import sys
 from os.path import join, dirname
 
 os.nice(15)
@@ -166,6 +165,7 @@ class CuraConnectionModule:
     def load_object(e, printer, object_name):
         klipper_config = printer.objects['configfile'].read_main_config()
         printer.load_object(klipper_config, object_name)
+
 
 def load_config(config):
     """Entry point, called by Klippy"""

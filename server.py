@@ -190,14 +190,14 @@ class Handler(srv.BaseHTTPRequestHandler):
             return
         old_index, _ = self.content_manager.uuid_to_print_job(uuid)
         new_index = data.get("to_position")
-        if not print_job:
+        if old_index is None:
             self.send_error(HTTPStatus.NOT_FOUND, "Print job not in Queue")
         elif data.get("list") != "queued" or not isinstance(new_index, int):
             self.send_error(HTTPStatus.BAD_REQUEST,
                     "Unexpected JSON content: " + rdata)
         else:
-            if self.reactor.cb(
-                self.do_queue_move, old_index, new_index-old_index, uuid, wait=True):
+            if self.reactor.cb(self.module.queue_move,
+                    old_index, uuid, new_index-old_index, wait=True):
                 self.send_response(HTTPStatus.OK)
                 self.end_headers()
             else:
@@ -245,7 +245,8 @@ class Handler(srv.BaseHTTPRequestHandler):
             else:
                 self.send_error(HTTPStatus.BAD_REQUEST, "Unknown action: " + str(action))
             if not res:
-                self.send_error(HTTPStatus.CONFLICT, "Failed to " + str(action))
+                self.send_error(HTTPStatus.CONFLICT,
+                    "Failed to " + str(action) + ", queue order has changed")
 
     def put_force(self, uuid):
         """

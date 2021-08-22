@@ -104,9 +104,7 @@ class ContentManager:
 
     def update_printers(self):
         """Update currently loaded material and state"""
-        configuration = []
         materials = self.reactor.cb(self.obtain_loaded_material, wait=True)
-        self.update_print_jobs()
         self.printer_status.configuration = [ClusterPrintCoreConfiguration(
             extruder_index=i,
             print_core_id="AA 0.4",
@@ -114,23 +112,27 @@ class ContentManager:
                 for i, material in enumerate(materials) if material['guid']]
         if self.module.testing:
             return
-        if self.klippy_jobs and \
-            self.klippy_jobs[0].state in {"printing", "paused", "pausing", "aborting"}:
+
+        klippy_jobs = self.reactor.cb(
+            self.obtain_print_jobs, process='printer', wait=True)
+        if klippy_jobs and klippy_jobs[0].state in {
+                "printing", "paused", "pausing", "aborting"}:
             self.printer_status.status = "printing"
         else:
             self.printer_status.status = "idle"
 
     @staticmethod
     def obtain_print_jobs(e, printer):
-        remaining = printer.objects['print_stats'].get_print_time_prediction()[0]
-        jobs = printer.objects['virtual_sdcard'].get_status()['jobs']
-        elapsed = jobs[0].get_printed_time() if jobs else 0
-        return jobs, remaining, elapsed
+        return printer.objects['virtual_sdcard'].get_status()['jobs']
+
+    @staticmethod
+    def obtain_remaining_time(e, printer):
+        return printer.objects['print_stats'].get_print_time_prediction()[0]
 
     def update_print_jobs(self):
         """Read queue, Update status, elapsed time"""
         # Update self.print_jobs with the queue
-        klippy_jobs, remaining, elapsed = self.reactor.cb(
+        klippy_jobs = self.reactor.cb(
             self.obtain_print_jobs, process='printer', wait=True)
         new_print_jobs = []
         for klippy_job in klippy_jobs:
@@ -149,6 +151,10 @@ class ContentManager:
 
         # Update first print job if there is one
         if self.print_jobs:
+            elapsed = klippy_jobs[0].get_printed_time() if klippy_jobs else 0
+            remaining = self.reactor.cb(
+                self.obtain_remaining_time, process='printer', wait=True)
+
             self.print_jobs[0].time_elapsed = int(elapsed)
             self.print_jobs[0].assigned_to = self.printer_status.uuid
             self.print_jobs[0].time_total = int(elapsed +
