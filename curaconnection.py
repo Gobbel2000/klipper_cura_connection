@@ -109,15 +109,13 @@ class CuraConnectionModule:
         This might take a little while, be patient
         can be called before start() e.g. when klipper initialization fails
         """
-        if self.server is None:
-            # stop() is called before start()
-            return
-        self.zeroconf_handler.stop()
-        logger.debug("Cura Connection Zeroconf shut down")
-        if self.server.is_alive():
-            self.server.shutdown()
-            self.server.join()
-            logger.debug("Cura Connection Server shut down")
+        if self.server is not None: # Server was started
+            self.zeroconf_handler.stop()
+            logger.debug("Cura Connection Zeroconf shut down")
+            if self.server.is_alive():
+                self.server.shutdown()
+                self.server.join()
+                logger.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
 
     def is_connected(self):
