@@ -19,7 +19,7 @@ echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo de
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 
 # Install dependencies
-sudo apt-get install --yes cmake libjpeg8-dev gcc iptables-persistent
+sudo apt-get install --yes cmake libjpeg9-dev gcc iptables-persistent
 
 # Redirect port 80 -> 8008
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8008
