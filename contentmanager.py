@@ -94,12 +94,17 @@ class ContentManager:
     def obtain_loaded_material(e, printer):
         fm = printer.objects['filament_manager']
         loaded_materials = fm.material["loaded"]
-        materials = [{
-            'guid': m['guid'],
-            'brand': fm.get_info(m['guid'], "./m:metadata/m:name/m:brand", ""),
-            'color': fm.get_info(m['guid'], "./m:metadata/m:name/m:color", ""),
-            'material': fm.get_info(m['guid'], "./m:metadata/m:name/m:material", "")}
-                for m in loaded_materials]
+        materials = []
+        for m in loaded_materials:
+            guid = m['guid']
+            if guid:
+                materials.append({
+                    'guid': guid,
+                    'brand': fm.get_info(guid, "./m:metadata/m:name/m:brand"),
+                    'color': fm.get_info(guid, "./m:metadata/m:name/m:color"),
+                    'material': fm.get_info(guid, "./m:metadata/m:name/m:material")})
+            else:
+                materials.append(None)
         return materials
 
     def update_printers(self):
@@ -109,7 +114,7 @@ class ContentManager:
             extruder_index=i,
             print_core_id="AA 0.4",
             material=material)
-                for i, material in enumerate(materials) if material['guid']]
+                for i, material in enumerate(materials)]
         if self.module.testing:
             return
 
