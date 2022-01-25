@@ -2,7 +2,7 @@ import email
 import logging
 import os
 
-logger = logging.getLogger("root.server")
+logger = logging.getLogger("klipper_cura_connection")
 
 class MimeParser:
     """

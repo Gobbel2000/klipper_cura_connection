@@ -28,6 +28,9 @@ class Handler(srv.BaseHTTPRequestHandler):
             + r"(?P<uuid>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})"
             + r"(?P<suffix>.*)$")
 
+    # Keeps TCP connections alive
+    protocol_version = "HTTP/1.1"
+
     def __init__(self, request, client_address, server):
         self.module = server.module
         self.reactor = server.module.reactor
