@@ -23,10 +23,6 @@ from .contentmanager import ContentManager
 from . import server
 from .zeroconfhandler import ZeroConfHandler
 
-klippy_dir = dirname(dirname(dirname(__file__)))
-site.addsitedir(join(klippy_dir, "extras/")) # gcode_metadata
-import gcode_metadata
-
 
 class CuraConnectionModule:
 
@@ -48,7 +44,7 @@ class CuraConnectionModule:
         self.zeroconf_handler = None
         self.server = None
         self.reactor = config.get_reactor()
-        self.metadata = gcode_metadata.load_config(config)
+        self.metadata = config.printer.lookup_object("gcode_metadata")
         # These are loaded a bit late, they sometimes miss the klippy:connect event
         # klippy:ready works since it only occurs after kguis handle_connect reports back
         self.reactor.cb(self.load_object, "filament_manager")
