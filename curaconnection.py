@@ -103,6 +103,7 @@ class CuraConnectionModule:
                 self.server.join()
                 logger.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
+        self.reactor.mp_logger.stop()
 
     def is_connected(self):
         """
