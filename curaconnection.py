@@ -8,7 +8,6 @@ shutting down,  which is handled in the CuraConnectionModule class.
 """
 
 import logging
-import logging.handlers
 import os
 import platform
 import socket
@@ -18,20 +17,8 @@ import sys
 from os.path import join, dirname
 
 PATH = os.path.dirname(os.path.realpath(__file__))
-LOGFILE = os.path.join(PATH, "logs/server.log")
 
 logger = logging.getLogger("klipper_cura_connection")
-formatter = logging.Formatter(fmt="%(levelname)s: \t[%(asctime)s] %(message)s")
-handler = logging.handlers.RotatingFileHandler(
-    filename=LOGFILE,
-    maxBytes=4194304, # max 4 MiB per file
-    backupCount=3, # up to 4 files total
-    delay=True, # Open file only once needed
-    )
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
 
 from .contentmanager import ContentManager
 from . import server

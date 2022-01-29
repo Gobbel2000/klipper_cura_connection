@@ -5,6 +5,7 @@ import logging
 import re
 import threading
 import time
+import datetime
 
 from .mimeparser import MimeParser
 
@@ -295,10 +296,12 @@ class Handler(srv.BaseHTTPRequestHandler):
         # Overwrite format string. Default is "code %d, message %s"
         if format == "code %d, message %s":
             format = "Errorcode %d: %s"
-        logger.error("<%s> " + format, self.address_string(), *args)
+        now = datetime.datetime.now().strftime('%b-%d-%I%M%p-%G')
+        logger.error(now + "<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
-        logger.log(logging.INFO, "<%s> " + format, self.address_string(), *args)
+        now = datetime.datetime.now().strftime('%b-%d-%I%M%p-%G')
+        logger.log(logging.INFO, now + "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.ThreadingHTTPServer, threading.Thread):
