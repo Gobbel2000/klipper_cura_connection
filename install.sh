@@ -13,13 +13,13 @@ then
     echo "Error: Klipper must be installed first, aborting installation"
     exit 1
 fi
-klippy-environment/bin/pip3 install -q zeroconf==0.28.8
+klippy-environment/bin/pip3 install -q zeroconf==0.38.1
 
 echo iptables-persistent iptables-persistent/autosave_v4 boolean false | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | sudo debconf-set-selections
 
 # Install dependencies
-sudo apt-get install --yes cmake libjpeg8-dev gcc iptables-persistent
+sudo apt-get install --yes cmake libjpeg-dev gcc iptables-persistent
 
 # Redirect port 80 -> 8008
 sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-ports 8008
@@ -34,8 +34,7 @@ then
     rm -rf mjpg-streamer
 fi
 
-#TODO Use stable commit or release
-git clone https://github.com/jacksonliam/mjpg-streamer.git
+git clone --depth 1 --branch v1.0.0 https://github.com/jacksonliam/mjpg-streamer.git
 cd mjpg-streamer/mjpg-streamer-experimental
 make
 sudo make install

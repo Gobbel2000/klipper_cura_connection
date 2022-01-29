@@ -13,7 +13,6 @@ import platform
 import socket
 import time
 import site
-import sys
 from os.path import join, dirname
 
 PATH = os.path.dirname(os.path.realpath(__file__))
@@ -96,15 +95,13 @@ class CuraConnectionModule:
         This might take a little while, be patient
         can be called before start() e.g. when klipper initialization fails
         """
-        if self.server is None:
-            # stop() is called before start()
-            return
-        self.zeroconf_handler.stop()
-        logger.debug("Cura Connection Zeroconf shut down")
-        if self.server.is_alive():
-            self.server.shutdown()
-            self.server.join()
-            logger.debug("Cura Connection Server shut down")
+        if self.server is not None: # Server was started
+            self.zeroconf_handler.stop()
+            logger.debug("Cura Connection Zeroconf shut down")
+            if self.server.is_alive():
+                self.server.shutdown()
+                self.server.join()
+                logger.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
 
     def is_connected(self):
@@ -152,6 +149,7 @@ class CuraConnectionModule:
     def load_object(e, printer, object_name):
         klipper_config = printer.objects['configfile'].read_main_config()
         printer.load_object(klipper_config, object_name)
+
 
 def load_config(config):
     """Entry point, called by Klippy"""
