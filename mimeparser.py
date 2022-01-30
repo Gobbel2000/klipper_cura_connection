@@ -2,7 +2,6 @@ import email
 import logging
 import os
 
-logger = logging.getLogger("klipper_cura_connection")
 
 class MimeParser:
     """
@@ -113,7 +112,7 @@ class MimeParser:
         # Write to this first to avoid the file browser crashing
         temp_path = self.fpath + ".part"
 
-        logger.debug("Writing file: %s", self.fpath)
+        logging.debug("Writing file: %s", self.fpath)
         self.written_files.append(self.fpath)
 
         # Use two buffers in case the boundary gets cut in half

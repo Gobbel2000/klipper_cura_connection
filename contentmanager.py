@@ -8,8 +8,6 @@ from .Models.Http.ClusterPrintCoreConfiguration import (
 from .Models.Http.ClusterPrinterStatus import ClusterPrinterStatus
 from .Models.Http.ClusterPrintJobStatus import ClusterPrintJobStatus
 
-logger = logging.getLogger("klipper_cura_connection")
-
 
 class ContentManager:
 

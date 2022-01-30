@@ -9,8 +9,7 @@ import datetime
 
 from .mimeparser import MimeParser
 
-logger = logging.getLogger("klipper_cura_connection")
-threading.excepthook = lambda tp, val, tb: logger.exception("Exception in thread")
+threading.excepthook = lambda tp, val, tb: logging.exception("Exception in thread")
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
@@ -301,11 +300,11 @@ class Handler(srv.BaseHTTPRequestHandler):
         if format == "code %d, message %s":
             format = "Errorcode %d: %s"
         now = datetime.datetime.now().strftime('%b-%d-%I%M%p-%G')
-        logger.error(now + "<%s> " + format, self.address_string(), *args)
+        logging.error(now + "<%s> " + format, self.address_string(), *args)
 
     def log_message(self, format, *args):
         now = datetime.datetime.now().strftime('%b-%d-%I%M%p-%G')
-        logger.log(logging.INFO, now + "<%s> " + format, self.address_string(), *args)
+        logging.log(logging.INFO, now + "<%s> " + format, self.address_string(), *args)
 
 
 class Server(srv.ThreadingHTTPServer, threading.Thread):

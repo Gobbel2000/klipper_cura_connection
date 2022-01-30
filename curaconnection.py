@@ -12,12 +12,9 @@ import os
 import platform
 import socket
 import time
-import site
-from os.path import join, dirname
+import queuelogger
 
 PATH = os.path.dirname(os.path.realpath(__file__))
-
-logger = logging.getLogger("klipper_cura_connection")
 
 from .contentmanager import ContentManager
 from . import server
@@ -31,6 +28,7 @@ class CuraConnectionModule:
     CONNECTION_TIMEOUT = 4.2
 
     def __init__(self, config):
+        self.logger = queuelogger.setup_bg_logging("/tmp/klipper_cura_connection.log", logging.INFO)
         self.testing = config is None
 
         # Global variables
@@ -51,7 +49,7 @@ class CuraConnectionModule:
         self.reactor.cb(self.load_object, "print_history")
         self.reactor.register_event_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
-        logger.info("\n\n=== Cura Connection Module initialized ===\n")
+        logging.info("\n\n=== Cura Connection Module initialized ===\n")
 
     def handle_ready(self):
         """
@@ -84,7 +82,7 @@ class CuraConnectionModule:
 
         self.zeroconf_handler.start() # Non-blocking
         self.server.start() # Starts server thread
-        logger.debug("Cura Connection Server started")
+        logging.debug("Cura Connection Server started")
 
     def handle_disconnect(self, *args):
         """
@@ -93,13 +91,13 @@ class CuraConnectionModule:
         """
         if self.server is not None: # Server was started
             self.zeroconf_handler.stop()
-            logger.debug("Cura Connection Zeroconf shut down")
+            logging.debug("Cura Connection Zeroconf shut down")
             if self.server.is_alive():
                 self.server.shutdown()
                 self.server.join()
-                logger.debug("Cura Connection Server shut down")
+                logging.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
-        self.reactor.mp_logger.stop()
+        self.logger.stop()
 
     def is_connected(self):
         """
