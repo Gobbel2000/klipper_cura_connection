@@ -12,14 +12,14 @@ import os
 import platform
 import socket
 import time
-import queuelogger
 
-PATH = os.path.dirname(os.path.realpath(__file__))
+import queuelogger
 
 from .contentmanager import ContentManager
 from . import server
 from .zeroconfhandler import ZeroConfHandler
 
+LOGFILE = "/tmp/klipper_cura_connection.log"
 
 class CuraConnectionModule:
 
@@ -28,12 +28,15 @@ class CuraConnectionModule:
     CONNECTION_TIMEOUT = 4.2
 
     def __init__(self, config):
-        self.logger = queuelogger.setup_bg_logging("/tmp/klipper_cura_connection.log", logging.INFO)
+        self._log_queue = queuelogger.setup_bg_logging(LOGFILE, logging.INFO)
+        self._log_queue.setFormatter(logging.Formatter(
+                fmt="%(levelname)s: \t[%(asctime)s] %(message)s"))
         self.testing = config is None
 
         # Global variables
         self.VERSION = "5.2.11" # We need to disguise as Cura Connect for now
         self.NAME = platform.node()
+        self.PATH = os.path.dirname(os.path.realpath(__file__))
         self.SDCARD_PATH = os.path.expanduser("~/Files")
         self.MATERIAL_PATH = os.path.expanduser("~/materials")
         self.ADDRESS = None
@@ -49,7 +52,7 @@ class CuraConnectionModule:
         self.reactor.cb(self.load_object, "print_history")
         self.reactor.register_event_handler("klippy:ready", self.handle_ready)
         self.reactor.register_event_handler("klippy:disconnect", self.handle_disconnect)
-        logging.info("\n\n=== Cura Connection Module initialized ===\n")
+        logging.info(" === Cura Connection Module initialized ===")
 
     def handle_ready(self):
         """
@@ -97,7 +100,7 @@ class CuraConnectionModule:
                 self.server.join()
                 logging.debug("Cura Connection Server shut down")
         self.reactor.register_async_callback(self.reactor.end)
-        self.logger.stop()
+        self._log_queue.stop()
 
     def is_connected(self):
         """

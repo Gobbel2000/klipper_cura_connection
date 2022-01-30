@@ -1,5 +1,5 @@
 from datetime import datetime
-import os, logging
+import os
 import uuid as uuid_lib
 
 from .Models.Http.ClusterMaterial import ClusterMaterial
