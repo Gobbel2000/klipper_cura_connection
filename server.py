@@ -8,7 +8,7 @@ import time
 
 from .mimeparser import MimeParser
 
-threading.excepthook = lambda tp, val, tb: logging.exception("Exception in thread")
+threading.excepthook = lambda *args: logging.exception("Exception in thread")
 
 PRINTER_API = "/api/v1/"
 CLUSTER_API = "/cluster-api/v1/"
