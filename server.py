@@ -179,7 +179,10 @@ class Handler(srv.BaseHTTPRequestHandler):
 
     @staticmethod
     def read_material_file(e, printer, path):
-        printer.objects['filament_manager'].read_single_file(path)
+        fm = printer.objects['filament_manager']
+        # Invalidate XML tree cache
+        fm.cached_parse.cache_clear()
+        fm.read_single_file(path)
 
     def post_move_to_top(self, uuid):
         """Move print job with uuid to the top of the queue"""
