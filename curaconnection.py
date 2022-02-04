@@ -112,7 +112,10 @@ class CuraConnectionModule:
 
     @staticmethod
     def add_print(e, printer, path):
-        return printer.objects['virtual_sdcard'].add_print(path)
+        # If the last print ended at least 10 minutes (600 seconds) ago,
+        # assume the buildplate is clear
+        return printer.objects['virtual_sdcard'].add_print(
+                path, assume_clear_after=600)
 
     @staticmethod
     def resume_print(e, printer, uuid):
